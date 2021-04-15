@@ -62,118 +62,13 @@ url_frame = {'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
 #     return days, start_date
 
 
-def pack_nodes(nodos, node_type):
-    """Returns a list of lists with nodes, this is done because depending on node type we have a maximum number of nodes per request ()PND is 10 max and PML is 20 max. PML missing"""
-    nodos = [nodo.replace(' ','-') for nodo in nodos]
-
-    size_limit = 10 if node_type == 'PND' else 20
-
-    nodos_api = []
-    while True:
-        if len(nodos) > size_limit:
-            nodos_api.append(nodos[:size_limit])
-            nodos = nodos[size_limit:]
-        else:
-            nodos_api.append(nodos)
-            break
-
-    return nodos_api
 
 
-def pack_dates(start_date, end_date):
-    """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
-    dates = []
-    delta = end_date-start_date
-    days = delta.days
-
-    while days >= 0:
-
-        if days >= 7:
-            last_date = start_date + timedelta(days = 6)
-            dates.append( [str(start_date),str(last_date)] )
-            start_date = last_date + timedelta(days = 1)
-            days -= 7
-
-        else:
-            last_date = end_date
-            dates.append( [str(start_date),str(last_date)] )
-            days = -1
-
-    return dates
 
 
-def get_urls_to_request(nodes_packed, dates_packed, node_type, market):
-
-    urls_list = []
-    for system in systems:
-        for node_group in nodes_packed:
-            for dates in dates_packed:
-                nodes_string = ','.join(node_group)
-
-                # Select correct API base
-                url = url_frame[node_type]
-
-                # Building request url with data provided
-                url_complete = f'{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON'
-
-                urls_list.append(url_complete)
-
-    return urls_list
 
 
-def check_data(json_data, date_interval):
 
-    if json_data['status'] == 'OK':
-
-        first_date = json_data['Resultados'][0]['Valores'][0]['fecha']
-        last_date = json_data['Resultados'][0]['Valores'][-1]['fecha']
-
-        if [first_date,last_date] != date_interval:
-            print(f'---Got data up to {last_date}, missing {date_interval[1]}---')
-
-        return True
-
-    else:
-        if json_data['status'] == 'ZERO RESULTS':
-            print(f'---No data availabe for dates {first_date} to {last_date}---')
-        else:
-            print(f"---Data status not 'OK': {json_data['status']}---")
-
-        return False
-
-
-def json_to_dataframe(json_file):
-    """Reads json file, creates a list of nodes DataFrames and concatenates them. After that it cleans/orders the final df and returns it"""
-    dfs = []
-
-    for node in json_file['Resultados']:
-        dfs.append(pd.DataFrame(node))
-
-    df = pd.concat(dfs) # Join all data frames
-
-    # Clean/order df to same format of existing csv files
-    df['sistema'] = json_file['sistema']
-    df['mercado'] = json_file['proceso']
-    df['fecha'] = df['Valores'].apply(lambda x: x['fecha'])
-    df['hora'] = df['Valores'].apply(lambda x: x['hora'])
-
-    if json_file['nombre'] == 'PEND':
-        df['precio_e'] = df['Valores'].apply(lambda x: x['pz'])
-        df['c_energia'] = df['Valores'].apply(lambda x: x['pz_ene'])
-        df['c_perdidas'] = df['Valores'].apply(lambda x: x['pz_per'])
-        df['c_congestion'] = df['Valores'].apply(lambda x: x['pz_cng'])
-        df['zona_de_carga'] = df['zona_carga'].copy()
-        df = df[['sistema','mercado','fecha','hora','zona_de_carga','precio_e','c_energia', 'c_perdidas','c_congestion']]
-
-    if json_file['nombre'] == 'PML':
-        df['precio_e'] = df['Valores'].apply(lambda x: x['pml'])
-        df['c_energia'] = df['Valores'].apply(lambda x: x['pml_ene'])
-        df['c_perdidas'] = df['Valores'].apply(lambda x: x['pml_per'])
-        df['c_congestion'] = df['Valores'].apply(lambda x: x['pml_cng'])
-        df['clave_nodo'] = df['clv_nodo'].copy()
-        df = df[['sistema','mercado','fecha','hora','clave_nodo','precio_e','c_energia', 'c_perdidas','c_congestion']]
-
-    return df
 
 
 def pack_values(df):
@@ -212,83 +107,83 @@ def pack_values(df):
 
 
 
-# def get_data(nodos_p, nodos_d, mda, mtr, start_date, end_date):
+def get_data(nodos_p, nodos_d, mda, mtr, start_date, end_date):
 
-#     # conn = pg2.connect(**postgres_password(), database='cenace')
-#     # cursor = conn.cursor()
-#     session = FuturesSession(max_workers=20)
+    # conn = pg2.connect(**postgres_password(), database='cenace')
+    # cursor = conn.cursor()
+    session = FuturesSession(max_workers=20)
 
-#     for node_type in node_types:
-#         for system in systems:
+    for node_type in node_types:
+        for system in systems:
 
-#             # print(f'{system}-{node_type}')
-#             # print('Getting list of nodes...')
+            # print(f'{system}-{node_type}')
+            # print('Getting list of nodes...')
 
-#             # Node list to upload from sql database
-#             nodes = get_unique_nodes(cursor, system, node_type)
+            # Node list to upload from sql database
+            nodes = get_unique_nodes(cursor, system, node_type)
 
-#             # Prepare nodes for API requests
-#             nodes_packed = pack_nodes(nodes, node_type)
+            # Prepare nodes for API requests
+            nodes_packed = pack_nodes(nodes, node_type)
 
-#             for market in markets:
+            for market in markets:
 
-#                 print(f'{market} - Looking for last date...')
+                print(f'{market} - Looking for last date...')
 
-#                 last_date = get_last_date(cursor, system, node_type, market)
-#                 days, start_date = missing_dates(last_date, market)
-#                 dates_packed = pack_dates(days, start_date)
+                last_date = get_last_date(cursor, system, node_type, market)
+                days, start_date = missing_dates(last_date, market)
+                dates_packed = pack_dates(days, start_date)
 
-#                 if len(dates_packed):
+                if len(dates_packed):
 
-#                     valid_values = True
+                    valid_values = True
 
-#                     for date_interval in dates_packed:
+                    for date_interval in dates_packed:
 
-#                         urls_list = get_urls_to_request(nodes_packed, date_interval, system, node_type, market)
+                        urls_list = get_urls_to_request(nodes_packed, date_interval, system, node_type, market)
 
-#                         print(f'{len(urls_list)} Requests', end='')
-#                         sys.stdout.flush()
+                        print(f'{len(urls_list)} Requests', end='')
+                        sys.stdout.flush()
 
-#                         futures=[session.get(u) for u in urls_list]
+                        futures=[session.get(u) for u in urls_list]
 
-#                         dfs = [] # List of missing info data frames
+                        dfs = [] # List of missing info data frames
 
-#                         for future in as_completed(futures):
+                        for future in as_completed(futures):
 
-#                             resp = future.result()
-#                             json_data = resp.json()
-#                             valid_values = check_data(json_data, date_interval)
+                            resp = future.result()
+                            json_data = resp.json()
+                            valid_values = check_data(json_data, date_interval)
 
-#                             if not valid_values:
-#                                 break
+                            if not valid_values:
+                                break
 
-#                             dfs.append(json_to_dataframe(json_data))
-#                             print('.', end='')
-#                             sys.stdout.flush()
+                            dfs.append(json_to_dataframe(json_data))
+                            print('.', end='')
+                            sys.stdout.flush()
 
-#                         if not valid_values:
-#                             break
+                        if not valid_values:
+                            break
 
-#                         print('Done')
+                        print('Done')
 
-#                         df = pd.concat(dfs) # Join downloaded info in one data frame
+                        df = pd.concat(dfs) # Join downloaded info in one data frame
 
-#                         values = pack_values(df)
+                        values = pack_values(df)
 
-#                         print(f'Uploading data from {date_interval[0]} to {date_interval[1]}', end='')
-#                         sys.stdout.flush()
+                        print(f'Uploading data from {date_interval[0]} to {date_interval[1]}', end='')
+                        sys.stdout.flush()
 
-#                         insert_into_table(cursor, system, node_type, market, values)
+                        insert_into_table(cursor, system, node_type, market, values)
 
-#                         conn.commit()
+                        conn.commit()
 
-#                     print(f'{system}-{node_type}-{market} up to date\n')
+                    print(f'{system}-{node_type}-{market} up to date\n')
 
-#                 #If there are no updates to be made...
-#                 else:
-#                     print(f'{system}-{node_type}-{market} up to date\n')
+                #If there are no updates to be made...
+                else:
+                    print(f'{system}-{node_type}-{market} up to date\n')
 
-#     print('.....................DONE.....................')
+    print('.....................DONE.....................')
 
 #     conn.commit()
 #     conn.close()
