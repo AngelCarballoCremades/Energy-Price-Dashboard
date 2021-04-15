@@ -112,6 +112,36 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, markets):
 
 #         return False
 
+def get_info(urls_list, bar):
+
+    session = FuturesSession(max_workers=20)
+    futures=[session.get(u) for u in urls_list]
+
+    dfs = [] # List of missing info data frames
+
+    for i,future in enumerate(as_completed(futures)):
+        percentage = i*100//len(urls_list) 
+        bar.progress(percentage)
+
+        resp = future.result()
+        json_data = resp.json()
+
+        if "status" in json_data.keys():
+            if json_data["status"] != "OK":
+                print(json_data)
+                continue
+        else:
+            if "Message" in json_data.keys():
+                print(json_data)
+                continue
+
+        dfs.append(json_to_dataframe(json_data))
+        print('.')
+
+    bar.progress(100)
+
+    return pd.concat(dfs) # Join downloaded info in one data frame
+
 def json_to_dataframe(json_file):
     """Reads json file, creates a list of nodes DataFrames and concatenates them. After that it cleans/orders the final df and returns it"""
     dfs = []
@@ -122,7 +152,7 @@ def json_to_dataframe(json_file):
     df = pd.concat(dfs) # Join all data frames
 
     # Clean/order df to same format of existing csv files
-    df['Sistema'] = json_file['Sistema']
+    df['Sistema'] = json_file['sistema']
     df['Mercado'] = json_file['proceso']
     df['Fecha'] = df['Valores'].apply(lambda x: x['fecha'])
     df['Hora'] = df['Valores'].apply(lambda x: x['hora'])
@@ -144,6 +174,7 @@ def json_to_dataframe(json_file):
         df['Tipo de NodoP'] = "NodoP"
 
     df = df[['Sistema','Mercado','Fecha','Hora','Clave o Nombre','Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]', "Tipo de NodoP"]]
+    # print(df)
     return df
 
 def main():
@@ -151,7 +182,7 @@ def main():
     # List of nodes for multiselects
     df = pd.read_csv('nodos2.csv')
     nodes_p = df['CLAVE'].tolist()
-    nodes_d = df['ZONA DE CARGA'].unique().tolist()
+    nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
 
     # Dates for date_input creation and delimitation
     max_date = date.today()+timedelta(days=1)
@@ -205,42 +236,25 @@ def main():
         "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "bcs"], "PML")
     }
     
-    # print(nodes_p)
-    # print(nodes_d)
-    # print(nodes_p.items())
-    # print(nodes_d.items())
-
     markets = ['MDA', 'MTR'] if mda and mtr else ['MDA'] if mda else ['MTR']
 
     nodes_p_urls = get_urls_to_request(nodes_p, dates_packed, 'PML', markets)
     nodes_d_urls = get_urls_to_request(nodes_d, dates_packed, 'PND', markets)
 
-    print(nodes_p_urls)
-    print(nodes_d_urls)
+    # print(nodes_p_urls)
+    # print(nodes_d_urls)
 
-    # print('\n')
+    print("Requesting")
 
-    session = FuturesSession(max_workers=20)
-    futures=[session.get(u) for u in urls_list]
-
-    dfs = [] # List of missing info data frames
-
-    for future in as_completed(futures):
-
-        resp = future.result()
-        json_data = resp.json()
-        
-        if json_data["status"] != "OK":
-            continue
-
-        dfs.append(json_to_dataframe(json_data))
-        print('.')
-
-    df = pd.concat(dfs) # Join downloaded info in one data frame
-
+    bar = st.sidebar.progress(0)
     
-
-
+    df_requested = get_info(nodes_d_urls + nodes_p_urls, bar) if any([nodes_d_urls,nodes_p_urls])  else None
+    
+    time.sleep(0.5)
+    bar.empty()
+    
+    print(df_requested)
+    
     # st.header('Charts')
     # col1 , col2, col3, col4 = st.beta_columns(4)
     # symbol = col1.text_input ('Enter Symbol','AMZN')
