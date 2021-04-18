@@ -5,7 +5,8 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
-from functions import *
+import plotly.express as px
+# from functions import *
 
 def check_nodes(selected_nodes_p, selected_nodes_d):
     if selected_nodes_p == selected_nodes_d:
@@ -49,7 +50,7 @@ def get_node_system(node):
         system = df[df["ZONA DE CARGA"] == node]["SISTEMA"].to_list()[0]
     
     else:
-        raise
+        raise ValueError("Node system not found.")
 
     return (node, system)
 
@@ -71,6 +72,11 @@ def pack_nodes(nodes, node_type):
     return nodos_api
 
 def get_urls_to_request(nodes_dict, dates_packed, node_type, markets):
+
+    url_frame = {
+        'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
+        'PML':'https://ws01.cenace.gob.mx:8082/SWPML/SIM/'
+        }
 
     urls_list = []
     for market in markets:
@@ -140,7 +146,13 @@ def get_info(urls_list, bar):
 
     bar.progress(100)
 
-    return pd.concat(dfs) # Join downloaded info in one data frame
+    try:
+        df = pd.concat(dfs) # Join downloaded info in one data frame
+    except:
+        df = None
+    
+    return df
+
 
 def json_to_dataframe(json_file):
     """Reads json file, creates a list of nodes DataFrames and concatenates them. After that it cleans/orders the final df and returns it"""
@@ -158,26 +170,42 @@ def json_to_dataframe(json_file):
     df['Hora'] = df['Valores'].apply(lambda x: x['hora'])
 
     if json_file['nombre'] == 'PEND':
-        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pz'])
-        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_ene'])
-        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_per'])
-        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_cng'])
-        df['Clave o Nombre'] = df['zona_carga'].copy()
+        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pz']).astype("float")
+        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_ene']).astype("float")
+        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_per']).astype("float")
+        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_cng']).astype("float")
+        df['Nombre del Nodo'] = df['zona_carga'].copy()
         df['Tipo de NodoP'] = "NodoP Distribuido"
 
     if json_file['nombre'] == 'PML':
-        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pml'])
-        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_ene'])
-        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_per'])
-        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_cng'])
-        df['Clave o Nombre'] = df['clv_nodo'].copy()
+        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pml']).astype("float")
+        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_ene']).astype("float")
+        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_per']).astype("float")
+        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_cng']).astype("float")
+        df['Nombre del Nodo'] = df['clv_nodo'].copy()
         df['Tipo de NodoP'] = "NodoP"
 
-    df = df[['Sistema','Mercado','Fecha','Hora','Clave o Nombre','Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]', "Tipo de NodoP"]]
+    df = df[['Sistema','Mercado','Fecha','Hora','Nombre del Nodo','Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]', "Tipo de NodoP"]]
     # print(df)
     return df
 
+def arange_dataframe(df):
+
+    # print(df_requested)
+    df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
+    # print(df)
+    df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+    # print(df)
+    df["Nodo-Mercado"] = df["Nombre del Nodo"] + '-' + df['Mercado']
+    # print(df)
+    df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
+    # print(df)
+
+    return df
+
 def main():
+
+    st.set_page_config(page_title="Precios del MEM", layout="wide", initial_sidebar_state="expanded")
 
     # List of nodes for multiselects
     df = pd.read_csv('nodos2.csv')
@@ -241,20 +269,78 @@ def main():
     nodes_p_urls = get_urls_to_request(nodes_p, dates_packed, 'PML', markets)
     nodes_d_urls = get_urls_to_request(nodes_d, dates_packed, 'PND', markets)
 
-    # print(nodes_p_urls)
-    # print(nodes_d_urls)
+    print(nodes_p_urls)
+    print(nodes_d_urls)
 
     print("Requesting")
 
-    bar = st.sidebar.progress(0)
-    
+    bar = st.sidebar.progress(0)   
     df_requested = get_info(nodes_d_urls + nodes_p_urls, bar) if any([nodes_d_urls,nodes_p_urls])  else None
-    
-    time.sleep(0.5)
+    time.sleep(0.2)
     bar.empty()
     
-    print(df_requested)
-    
+    df_plot = arange_dataframe(df_requested)
+
+
+    fig = px.line(
+        data_frame=df_plot, 
+        x="Fecha_g", 
+        y="Precio [$/MWh]", 
+        color='Nodo-Mercado',
+        hover_data=['Fecha','Hora', "Nodo-Mercado", "Precio [$/MWh]"],
+        )
+
+    fig.update_layout(
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor = 'rgba(255,255,255,0.6)'
+        ),
+        hovermode="x"
+    )
+    fig.update_traces(
+        mode="markers+lines",
+        hovertemplate=None
+        )
+    st.plotly_chart(fig, use_container_width=True)
+    # fig = px.line(
+    #     data_frame=df_filtered,
+    #     x="Fecha",
+    #     y="generation_mwh",
+    #     color="gen_type",
+    #     hover_data=['gen_type','generation_mwh'],
+    #     category_orders=dict(
+    #         gen_type = [
+    #             'nucleoelectrica',
+    #             'carboelectrica',
+    #             'combustion_interna',
+    #             'ciclo_combinado',
+    #             'geotermoelectrica',
+    #             'termica_convencional',
+    #             'turbo_gas',
+    #             'hidroelectrica',
+    #             'biomasa',
+    #             'eolica',
+    #             'fotovoltaica'
+    #             ]))
+    # fig.update_layout(clickmode='event+select')
+    # fig.update_layout(
+    #     title= dict(
+    #         text = "Generación Real Por Día",
+    #         x = 0.5),
+    #     xaxis_title=None,
+    #     yaxis_title="Generación [MWh]",
+    #     xaxis_ticks = 'outside',
+    #     yaxis_ticks = 'outside',
+    #     legend_title=None,
+    #     font=dict(
+    #         family="Arial",
+    #         size=12.5))
+    # fig.show()
+
+
     # st.header('Charts')
     # col1 , col2, col3, col4 = st.beta_columns(4)
     # symbol = col1.text_input ('Enter Symbol','AMZN')
