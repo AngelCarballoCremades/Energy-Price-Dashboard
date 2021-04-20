@@ -193,29 +193,42 @@ def json_to_dataframe(json_file):
     # print(df)
     return df
 
-def arange_dataframe(df):
+def arange_dataframe_for_plot(df):
 
-    # print(df_requested)
     df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
-    # print(df)
     df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
-    # print(df)
-    df["Nodo-Mercado"] = df["Nombre del Nodo"] + '-' + df['Mercado']
-    # print(df)
+    df["Nodo-Mercado"] = df["Nombre del Nodo"] + '_' + df['Mercado']
     df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
-    # print(df)
     return df
 
-def plot_df(df):
+def arange_dataframe_for_table(df, component, download = False):
+
+    df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
+    df_table.columns = df_table.columns.to_series().values
+    df_table.reset_index(inplace=True)
+    df_table['Hora'] = df_table['Hora'].astype('int')
+    df_table.sort_values(by=['Fecha','Hora'], axis=0, ascending=[True,True], inplace=True, ignore_index=True)
+    # print(df_table.columns)
+    # if not download:
+    #     for col in df_table.columns:
+    #         if col not in ['Fecha','Hora']:
+    #             df_table[col] = df_table[col].astype('int', errors='ignore')
+
+    return df_table
+
+def plot_df(df, component):
     
     fig = px.line(
         data_frame=df, 
         x="Fecha_g", 
-        y="Precio [$/MWh]", 
+        y=component, 
         color='Nodo-Mercado',
-        hover_data=['Fecha','Hora', "Nodo-Mercado", "Precio [$/MWh]"],
+        hover_data=['Fecha','Hora', "Nodo-Mercado", component],
         width=900, 
-        height=600
+        height=600,
+        labels={
+            "Fecha_g": "Fecha"
+            }
         )
     fig.update_layout(
         legend=dict(
@@ -282,28 +295,31 @@ def main():
 
 
     if not button_pressed:
+        print('Press the button')
         st.stop()
 
+    print("Checking data...")
     # One or more nodes and markets must be selected to continue...
     check_nodes(selected_nodes_p, selected_nodes_d)
     check_markets(mda, mtr)
 
+    print("Getting info ready...")
     dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
     dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
     nodes_d_system = list(map(get_node_system, selected_nodes_d))
     nodes_p_system = list(map(get_node_system, selected_nodes_p))
-
+    
     nodes_d = {
         "SIN": pack_nodes([node[0] for node in nodes_d_system if node[1] == "SIN"], "PND"),
         "BCA": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCA"], "PND"),
-        "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "bcs"], "PND")
+        "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCS"], "PND")
     }
     nodes_p = {
         "SIN": pack_nodes([node[0] for node in nodes_p_system if node[1] == "SIN"], "PML"),
         "BCA": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCA"], "PML"),
-        "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "bcs"], "PML")
+        "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCS"], "PML")
     }
-    
+    # print(nodes_d, nodes_p)
     nodes_p_urls = []
     nodes_d_urls = []
 
@@ -315,31 +331,33 @@ def main():
         nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
         nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
 
-    # print(nodes_p_urls)
     # print(nodes_d_urls)
+    # print(nodes_p_urls)
 
     if not len(nodes_d_urls + nodes_p_urls):
         st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
         st.stop()
 
-    print("Requesting")
+    print("Requesting...")
 
     bar = st.sidebar.progress(0)   
     df_requested = get_info(nodes_d_urls + nodes_p_urls, bar) if any([nodes_d_urls,nodes_p_urls])  else None
     time.sleep(0.2)
     bar.empty()  
 
-    print('plotting...')
-    df_plot = arange_dataframe(df_requested)
+    components = ['Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
+    component = st.selectbox(label='etiqueta', options=components, index=0, key=None, help=None)
+    # component = componentes[2]
 
-    st.plotly_chart(plot_df(df_plot), use_container_width=True)
+    print('Plotting...')
+    df_plot = arange_dataframe_for_plot(df_requested)
+    st.plotly_chart(plot_df(df_plot, component), use_container_width=True)
 
-
-    componentes = ['Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
-    df_table = df_requested.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=componentes[0])
-    print(df_table)
-    st.dataframe(df_table)
+    print("Making table...")
+    df_table = arange_dataframe_for_table(df_requested, component)
+    st.dataframe(df_table.style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
     
+    print('Done')
 
 if __name__ == "__main__":
     main()
