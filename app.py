@@ -18,8 +18,12 @@ def check_markets(mda, mtr):
         st.sidebar.warning('Selecciona uno o dos mercados')
         st.stop()
 
-def pack_dates(start_date, end_date):
+def pack_dates(start_date, end_date, market):
     """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
+    
+    if market == 'MTR' and end_date > date.today()-timedelta(days = 7):
+        end_date = date.today()-timedelta(days = 7)
+
     dates = []
     delta = end_date-start_date
     days = delta.days
@@ -71,7 +75,7 @@ def pack_nodes(nodes, node_type):
 
     return nodos_api
 
-def get_urls_to_request(nodes_dict, dates_packed, node_type, markets):
+def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
     url_frame = {
         'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
@@ -79,22 +83,22 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, markets):
         }
 
     urls_list = []
-    for market in markets:
-        for system, nodes_packed in nodes_dict.items():
-            if not len(nodes_packed[0]): 
-                continue
-            
-            for node_group in nodes_packed:
-                for dates in dates_packed:
-                    nodes_string = ','.join(node_group)
+    # for market in markets:
+    for system, nodes_packed in nodes_dict.items():
+        if not len(nodes_packed[0]): 
+            continue
+        
+        for node_group in nodes_packed:
+            for dates in dates_packed:
+                nodes_string = ','.join(node_group)
 
-                    # Select correct API base
-                    url = url_frame[node_type]
+                # Select correct API base
+                url = url_frame[node_type]
 
-                    # Building request url with data provided
-                    url_complete = f'{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON'
+                # Building request url with data provided
+                url_complete = f'{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON'
 
-                    urls_list.append(url_complete)
+                urls_list.append(url_complete)
 
     return urls_list
 
@@ -200,8 +204,43 @@ def arange_dataframe(df):
     # print(df)
     df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
     # print(df)
-
     return df
+
+def plot_df(df):
+    
+    fig = px.line(
+        data_frame=df, 
+        x="Fecha_g", 
+        y="Precio [$/MWh]", 
+        color='Nodo-Mercado',
+        hover_data=['Fecha','Hora', "Nodo-Mercado", "Precio [$/MWh]"],
+        width=900, 
+        height=600
+        )
+    fig.update_layout(
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor = 'rgba(255,255,255,0.6)'
+        ),
+        hovermode="x"
+    )
+    fig.update_traces(
+        mode="markers+lines",
+        hovertemplate=None
+        )
+    fig.update_xaxes(
+        rangeslider_visible=True,
+        rangeslider_thickness = 0.09
+        )
+    fig.update_yaxes(
+        fixedrange=False,
+        # ticklabelposition="inside top"
+    )
+
+    return fig
 
 def main():
 
@@ -249,7 +288,8 @@ def main():
     check_nodes(selected_nodes_p, selected_nodes_d)
     check_markets(mda, mtr)
 
-    dates_packed = pack_dates(start_date, end_date)
+    dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
+    dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
     nodes_d_system = list(map(get_node_system, selected_nodes_d))
     nodes_p_system = list(map(get_node_system, selected_nodes_p))
 
@@ -264,105 +304,42 @@ def main():
         "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "bcs"], "PML")
     }
     
-    markets = ['MDA', 'MTR'] if mda and mtr else ['MDA'] if mda else ['MTR']
+    nodes_p_urls = []
+    nodes_d_urls = []
 
-    nodes_p_urls = get_urls_to_request(nodes_p, dates_packed, 'PML', markets)
-    nodes_d_urls = get_urls_to_request(nodes_d, dates_packed, 'PND', markets)
+    if mda:
+        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mda, 'PML', 'MDA')
+        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'PND', 'MDA')
+    
+    if mtr:        
+        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
+        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
 
-    print(nodes_p_urls)
-    print(nodes_d_urls)
+    # print(nodes_p_urls)
+    # print(nodes_d_urls)
+
+    if not len(nodes_d_urls + nodes_p_urls):
+        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+        st.stop()
 
     print("Requesting")
 
     bar = st.sidebar.progress(0)   
     df_requested = get_info(nodes_d_urls + nodes_p_urls, bar) if any([nodes_d_urls,nodes_p_urls])  else None
     time.sleep(0.2)
-    bar.empty()
-    
+    bar.empty()  
+
+    print('plotting...')
     df_plot = arange_dataframe(df_requested)
 
-
-    fig = px.line(
-        data_frame=df_plot, 
-        x="Fecha_g", 
-        y="Precio [$/MWh]", 
-        color='Nodo-Mercado',
-        hover_data=['Fecha','Hora', "Nodo-Mercado", "Precio [$/MWh]"],
-        )
-
-    fig.update_layout(
-        legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01,
-            bgcolor = 'rgba(255,255,255,0.6)'
-        ),
-        hovermode="x"
-    )
-    fig.update_traces(
-        mode="markers+lines",
-        hovertemplate=None
-        )
-    st.plotly_chart(fig, use_container_width=True)
-    # fig = px.line(
-    #     data_frame=df_filtered,
-    #     x="Fecha",
-    #     y="generation_mwh",
-    #     color="gen_type",
-    #     hover_data=['gen_type','generation_mwh'],
-    #     category_orders=dict(
-    #         gen_type = [
-    #             'nucleoelectrica',
-    #             'carboelectrica',
-    #             'combustion_interna',
-    #             'ciclo_combinado',
-    #             'geotermoelectrica',
-    #             'termica_convencional',
-    #             'turbo_gas',
-    #             'hidroelectrica',
-    #             'biomasa',
-    #             'eolica',
-    #             'fotovoltaica'
-    #             ]))
-    # fig.update_layout(clickmode='event+select')
-    # fig.update_layout(
-    #     title= dict(
-    #         text = "Generación Real Por Día",
-    #         x = 0.5),
-    #     xaxis_title=None,
-    #     yaxis_title="Generación [MWh]",
-    #     xaxis_ticks = 'outside',
-    #     yaxis_ticks = 'outside',
-    #     legend_title=None,
-    #     font=dict(
-    #         family="Arial",
-    #         size=12.5))
-    # fig.show()
+    st.plotly_chart(plot_df(df_plot), use_container_width=True)
 
 
-    # st.header('Charts')
-    # col1 , col2, col3, col4 = st.beta_columns(4)
-    # symbol = col1.text_input ('Enter Symbol','AMZN')
-    # start = col2.date_input ('Start', datetime.strptime('2020-1-1', '%Y-%m-%d'))
-    # end = col3.date_input('End')
-
-
-    # progress_bar = st.sidebar.progress(0)
-    # status_text = st.sidebar.empty()
-    # last_rows = np.random.randn(1, 1)
-    # chart = st.line_chart(last_rows)
-
-    # for i in range(1, 101):
-    #     new_rows = last_rows[-1, :] + np.random.randn(5, 1).cumsum(axis=0)
-    #     status_text.text("%i%% Complete" % i)
-    #     chart.add_rows(new_rows)
-    #     progress_bar.progress(i)
-    #     last_rows = new_rows
-    #     time.sleep(0.05)
-
-    # progress_bar.empty()
-
+    componentes = ['Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
+    df_table = df_requested.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=componentes[0])
+    print(df_table)
+    st.dataframe(df_table)
+    
 
 if __name__ == "__main__":
     main()
