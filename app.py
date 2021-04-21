@@ -8,6 +8,7 @@ from concurrent.futures import as_completed
 import plotly.express as px
 import base64
 # from functions import *
+# 
 
 def check_dates(dates):
     if len(dates)!=2:
