@@ -213,7 +213,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
 
 
     df = use_avg_option(df, avg_option)
-    print(df)
+    # print(df)
     
     df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
     df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
@@ -221,6 +221,8 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
 
 def arange_dataframe_for_table(df, component, download = False):
 
+    print(df)
+    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
     df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
     df_table.columns = df_table.columns.to_series().values
     df_table.reset_index(inplace=True)
@@ -353,7 +355,7 @@ def main():
 
    
     df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else None
-    print(df_requested)
+    # print(df_requested)
 
     col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
     component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help=None)
