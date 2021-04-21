@@ -6,7 +6,12 @@ from datetime import datetime, date, timedelta
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 import plotly.express as px
+import base64
 # from functions import *
+
+def check_dates(dates):
+    if len(dates)!=2:
+        st.stop()
 
 def check_nodes(selected_nodes_p, selected_nodes_d):
     if selected_nodes_p == selected_nodes_d:
@@ -102,28 +107,13 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
     return urls_list
 
-# def check_data(json_data, date_interval):
+# def bar_hash_func(bar):
+#     return bar.progress
 
-#     if json_data['status'] == 'OK':
+@st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)#(hash_funcs={streamlit.delta_generator.DeltaGenerator: bar_hash_func})
+def get_info(urls_list):
 
-#         first_date = json_data['Resultados'][0]['Valores'][0]['fecha']
-#         last_date = json_data['Resultados'][0]['Valores'][-1]['fecha']
-
-#         if [first_date,last_date] != date_interval:
-#             print(f'---Got data up to {last_date}, missing {date_interval[1]}---')
-
-#         return True
-
-#     else:
-#         if json_data['status'] == 'ZERO RESULTS':
-#             print(f'---No data availabe for dates {first_date} to {last_date}---')
-#         else:
-#             print(f"---Data status not 'OK': {json_data['status']}---")
-
-#         return False
-
-def get_info(urls_list, bar):
-
+    bar = st.sidebar.progress(0)
     session = FuturesSession(max_workers=20)
     futures=[session.get(u) for u in urls_list]
 
@@ -149,6 +139,8 @@ def get_info(urls_list, bar):
         print('.')
 
     bar.progress(100)
+    time.sleep(0.5)
+    bar.empty()
 
     try:
         df = pd.concat(dfs) # Join downloaded info in one data frame
@@ -174,30 +166,55 @@ def json_to_dataframe(json_file):
     df['Hora'] = df['Valores'].apply(lambda x: x['hora'])
 
     if json_file['nombre'] == 'PEND':
-        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pz']).astype("float")
+        df['Precio Total [$/MWh]'] = df['Valores'].apply(lambda x: x['pz']).astype("float")
         df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_ene']).astype("float")
         df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_per']).astype("float")
         df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_cng']).astype("float")
         df['Nombre del Nodo'] = df['zona_carga'].copy()
-        df['Tipo de NodoP'] = "NodoP Distribuido"
 
     if json_file['nombre'] == 'PML':
-        df['Precio [$/MWh]'] = df['Valores'].apply(lambda x: x['pml']).astype("float")
+        df['Precio Total [$/MWh]'] = df['Valores'].apply(lambda x: x['pml']).astype("float")
         df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_ene']).astype("float")
         df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_per']).astype("float")
         df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_cng']).astype("float")
         df['Nombre del Nodo'] = df['clv_nodo'].copy()
-        df['Tipo de NodoP'] = "NodoP"
 
-    df = df[['Sistema','Mercado','Fecha','Hora','Nombre del Nodo','Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]', "Tipo de NodoP"]]
+    df = df[['Sistema','Mercado','Fecha','Hora','Nombre del Nodo','Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']]
     # print(df)
     return df
 
-def arange_dataframe_for_plot(df):
+def get_agg_options(avg_option):
+    # avg_options = ["Horario", "Diario", "Semanal"]
+    if avg_option == "Horario":
+        return ["Histórico","Día", "Semana", "Mes"]
+    if avg_option == "Diario":
+        return ["Histórico","Semana", "Mes"]
+    if avg_option == "Semanal":
+        return ["Histórico","Mes"]
 
-    df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
-    df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
-    df["Nodo-Mercado"] = df["Nombre del Nodo"] + '_' + df['Mercado']
+
+def arange_dataframe_for_plot(df, avg_option, agg_option, group):
+    
+    def use_avg_option(df, avg_option):
+        if avg_option == "Horario":
+            df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
+            df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+            return df
+
+        if avg_option == "Diario":
+            df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
+            df.reset_index(inplace=True)
+            df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
+            return df
+
+        if avg_option == "Semanal":
+            pass
+
+
+    df = use_avg_option(df, avg_option)
+    print(df)
+    
+    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
     df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
     return df
 
@@ -208,11 +225,6 @@ def arange_dataframe_for_table(df, component, download = False):
     df_table.reset_index(inplace=True)
     df_table['Hora'] = df_table['Hora'].astype('int')
     df_table.sort_values(by=['Fecha','Hora'], axis=0, ascending=[True,True], inplace=True, ignore_index=True)
-    # print(df_table.columns)
-    # if not download:
-    #     for col in df_table.columns:
-    #         if col not in ['Fecha','Hora']:
-    #             df_table[col] = df_table[col].astype('int', errors='ignore')
 
     return df_table
 
@@ -223,11 +235,11 @@ def plot_df(df, component):
         x="Fecha_g", 
         y=component, 
         color='Nodo-Mercado',
-        hover_data=['Fecha','Hora', "Nodo-Mercado", component],
+        hover_data=['Fecha', "Nodo-Mercado", component],
         width=900, 
         height=600,
         labels={
-            "Fecha_g": "Fecha"
+            "Fecha_g": ""
             }
         )
     fig.update_layout(
@@ -249,15 +261,27 @@ def plot_df(df, component):
         rangeslider_thickness = 0.09
         )
     fig.update_yaxes(
-        fixedrange=False,
-        # ticklabelposition="inside top"
+        fixedrange=False
     )
 
     return fig
 
+def get_table_download_link(df,dates):
+    """Generates a link allowing the data in a given panda dataframe to be downloaded
+    in:  dataframe
+    out: href string
+    """
+    file_name = f"energy_prices_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
+    csv = df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    href = f'<a href="data:file/csv;base64,{b64}" download="{file_name}">Descargar tabla</a>'
+    return href
+
 def main():
 
     st.set_page_config(page_title="Precios del MEM", layout="wide", initial_sidebar_state="expanded")
+    
+    components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
 
     # List of nodes for multiselects
     df = pd.read_csv('nodos2.csv')
@@ -284,24 +308,13 @@ def main():
     with col2:
         mtr = st.checkbox('MTR', value=False)
 
-    # Graph button
-    button_pressed = st.sidebar.button('Graficar')
-
-    # wait until a date range is selected
-    if len(dates)!=2:
-        st.stop()
-
-    start_date, end_date = dates
-
-
-    if not button_pressed:
-        print('Press the button')
-        st.stop()
-
+    # Check selected options
     print("Checking data...")
-    # One or more nodes and markets must be selected to continue...
+    
+    check_dates(dates)
     check_nodes(selected_nodes_p, selected_nodes_d)
     check_markets(mda, mtr)
+    start_date, end_date = dates
 
     print("Getting info ready...")
     dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
@@ -331,30 +344,33 @@ def main():
         nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
         nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
 
-    # print(nodes_d_urls)
-    # print(nodes_p_urls)
-
     if not len(nodes_d_urls + nodes_p_urls):
         st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
         st.stop()
 
     print("Requesting...")
 
-    bar = st.sidebar.progress(0)   
-    df_requested = get_info(nodes_d_urls + nodes_p_urls, bar) if any([nodes_d_urls,nodes_p_urls])  else None
-    time.sleep(0.2)
-    bar.empty()  
+   
+    df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else None
+    print(df_requested)
 
-    components = ['Precio [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
-    component = st.selectbox(label='etiqueta', options=components, index=0, key=None, help=None)
-    # component = componentes[2]
+    col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
+    component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help=None)
+    
+    
+    avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0)
+    agg_option = col3.selectbox("Periodo", get_agg_options(avg_option), 0)
+    col4.subheader('')
+    group = col4.checkbox('Comparar Periodos', value=False)
+    
 
     print('Plotting...')
-    df_plot = arange_dataframe_for_plot(df_requested)
-    st.plotly_chart(plot_df(df_plot, component), use_container_width=True)
+    df_plot = arange_dataframe_for_plot(df_requested.copy(), avg_option, agg_option, group)
+    st.plotly_chart(plot_df(df_plot, component), use_container_width=True)#use_column_width=True
 
     print("Making table...")
-    df_table = arange_dataframe_for_table(df_requested, component)
+    df_table = arange_dataframe_for_table(df_requested.copy(), component)
+    st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
     st.dataframe(df_table.style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
     
     print('Done')
