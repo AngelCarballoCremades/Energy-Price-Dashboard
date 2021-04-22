@@ -187,36 +187,64 @@ def json_to_dataframe(json_file):
 def get_agg_options(avg_option):
     # avg_options = ["Horario", "Diario", "Semanal"]
     if avg_option == "Horario":
-        return ["Histórico","Día", "Semana", "Mes"]
+        return ["Histórico","Día de la semana", "Mes"]
     if avg_option == "Diario":
-        return ["Histórico","Semana", "Mes"]
+        return ["Histórico"]
     if avg_option == "Semanal":
-        return ["Histórico","Mes"]
+        return ["Histórico"]
 
 
 def arange_dataframe_for_plot(df, avg_option, agg_option, group):
     
-    def use_avg_option(df, avg_option):
-        if avg_option == "Horario":
-            df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
-            df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
-            return df
+    def use_avg_option(df, avg_option, agg_option):
 
-        if avg_option == "Diario":
+        if avg_option == "Horario":
+            if agg_option == "Histórico":
+                df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
+                df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+                df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
+                return df
+            
+            elif agg_option == "Día de la semana":
+                df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
+                df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+                df['Día de la semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
+                df['Hora'] = df['Hora'].apply(lambda x: x if int(x)>9 else f'0{x}')
+                df['Día-Hora'] = df['Día de la semana'] + "_" + df['Hora']
+                # print(df.T)
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Día-Hora']).mean()
+                df.reset_index(inplace=True)
+                # print(df.T)
+                df.sort_values(by='Día-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
+                return df
+
+            elif agg_option == "Mes":
+                pass
+
+        elif avg_option == "Diario":
             df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
             df.reset_index(inplace=True)
             df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
+            df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
 
-        if avg_option == "Semanal":
-            pass
+        elif avg_option == "Semanal":
+            df["Fecha"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
+            df['Año-Semana'] = df['Fecha'].apply(lambda x: ".".join([str(x.isocalendar()[0]), str(x.isocalendar()[1]) if x.isocalendar()[1] > 9 else f"0{str(x.isocalendar()[1])}" ]))
+            # df['Año'] = df['Fecha'].apply(lambda x: x.isocalendar()[0])
+            # st.dataframe(df[['Año-Semana','Fecha']])#.sort_values(by=['Semana','Fecha'], axis=0, ascending=True))
+            df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Año-Semana']).mean()
+            df.reset_index(inplace=True)
+            df.sort_values(by=['Año-Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
+            # df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
+            return df
 
-
-    df = use_avg_option(df, avg_option)
+    df = df[df['Hora'] != '25']
+    df = use_avg_option(df, avg_option, agg_option)
     # print(df)
     
     df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
-    df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
+    
     return df
 
 def arange_dataframe_for_table(df, component, download = False):
@@ -231,20 +259,50 @@ def arange_dataframe_for_table(df, component, download = False):
 
     return df_table
 
-def plot_df(df, component):
+def plot_df(df, component, avg_option, agg_option):
     
-    fig = px.line(
-        data_frame=df, 
-        x="Fecha_g", 
-        y=component, 
-        color='Nodo-Mercado',
-        hover_data=['Fecha', "Nodo-Mercado", component],
-        width=900, 
-        height=600,
-        labels={
-            "Fecha_g": ""
-            }
-        )
+    if avg_option == 'Semanal':
+        fig = px.line(
+            data_frame=df, 
+            x="Año-Semana", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Año-Semana', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Año-Semana": ""
+                }
+            )
+    
+    elif avg_option == "Horario" and agg_option == "Día de la semana":
+        fig = px.line(
+            data_frame=df, 
+            x="Día-Hora", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Día-Hora', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Día-Hora": ""
+                }
+            )
+
+    else:
+        fig = px.line(
+            data_frame=df, 
+            x="Fecha_g", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Fecha', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Fecha_g": ""
+                }
+            )
+
     fig.update_layout(
         legend=dict(
             yanchor="top",
@@ -360,16 +418,14 @@ def main():
     col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
     component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help=None)
     
-    
     avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0)
-    agg_option = col3.selectbox("Periodo", get_agg_options(avg_option), 0)
+    agg_option = col3.selectbox("Agrupar por", get_agg_options(avg_option), 0)
     col4.subheader('')
-    group = col4.checkbox('Comparar Periodos', value=False)
-    
+    group = col4.checkbox('Comparar Periodos', value=False)    
 
     print('Plotting...')
     df_plot = arange_dataframe_for_plot(df_requested.copy(), avg_option, agg_option, group)
-    st.plotly_chart(plot_df(df_plot, component), use_container_width=True)#use_column_width=True
+    st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option), use_container_width=True)#use_column_width=True
 
     print("Making table...")
     df_table = arange_dataframe_for_table(df_requested.copy(), component)
