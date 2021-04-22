@@ -114,6 +114,7 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)#(hash_funcs={streamlit.delta_generator.DeltaGenerator: bar_hash_func})
 def get_info(urls_list):
 
+    bar_string = st.sidebar.text('Cargando...')
     bar = st.sidebar.progress(0)
     session = FuturesSession(max_workers=20)
     futures=[session.get(u) for u in urls_list]
@@ -141,12 +142,15 @@ def get_info(urls_list):
 
     bar.progress(100)
     time.sleep(0.5)
+    bar_string.empty()
     bar.empty()
 
     try:
         df = pd.concat(dfs) # Join downloaded info in one data frame
     except:
         df = None
+    
+    df.reset_index(drop=True, inplace=True)
     
     return df
 
@@ -184,6 +188,14 @@ def json_to_dataframe(json_file):
     # print(df)
     return df
 
+# @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
+def check_for_23_or_25_hours(df_requested):
+    df = df_requested[df_requested['Hora'] != '25']
+    # index_25 = df_requested[df_requested['Hora'] == '25'].index.to_list()
+    # print(index_25)
+
+    return df
+
 def get_agg_options(avg_option):
     # avg_options = ["Horario", "Diario", "Semanal"]
     if avg_option == "Horario":
@@ -209,12 +221,18 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
                 df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
                 df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
                 df['Día de la semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
-                df['Hora'] = df['Hora'].apply(lambda x: x if int(x)>9 else f'0{x}')
-                df['Día-Hora'] = df['Día de la semana'] + "_" + df['Hora']
-                # print(df.T)
-                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Día-Hora']).mean()
+                # df['Hora'] = df['Hora'].apply(lambda x: x if int(x)>9 else f'0{x}')
+                # df['Día-Hora'] = df['Día de la semana'] + "_" + df['Hora']
+                print(df.T)
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Día de la semana','Hora_g']).mean()
                 df.reset_index(inplace=True)
-                # print(df.T)
+                print(df.T)
+                # df['Día'] = df['Día-Hora'].apply(lambda x: x[0])
+                # df['Hora'] = df['Día-Hora'].apply(lambda x: int(x[-2:])-1)
+                
+                df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
+                df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
+                print(df.T)
                 df.sort_values(by='Día-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
                 return df
 
@@ -239,7 +257,6 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             # df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             return df
 
-    df = df[df['Hora'] != '25']
     df = use_avg_option(df, avg_option, agg_option)
     # print(df)
     
@@ -288,6 +305,8 @@ def plot_df(df, component, avg_option, agg_option):
                 "Día-Hora": ""
                 }
             )
+        fig.update_layout(
+            xaxis_tickformat = '%a (%S)')
 
     else:
         fig = px.line(
@@ -413,7 +432,11 @@ def main():
 
    
     df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else None
-    # print(df_requested)
+    # st.write(df_requested.astype('object'))
+    
+    df_requested_clean = check_for_23_or_25_hours(df_requested)
+    # st.write(df_requested_clean.astype('object'))
+    
 
     col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
     component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help=None)
@@ -424,13 +447,14 @@ def main():
     group = col4.checkbox('Comparar Periodos', value=False)    
 
     print('Plotting...')
-    df_plot = arange_dataframe_for_plot(df_requested.copy(), avg_option, agg_option, group)
+    df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
     st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option), use_container_width=True)#use_column_width=True
 
     print("Making table...")
-    df_table = arange_dataframe_for_table(df_requested.copy(), component)
+    df_table = arange_dataframe_for_table(df_requested_clean.copy(), component)
     st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
     st.dataframe(df_table.style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
+    # st.write(df_table.astype('object'))
     
     print('Done')
 
