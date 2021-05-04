@@ -23,7 +23,7 @@ The app is divided in 2: sidebar and central area.
 The sidebar is where the information to request is placed.
 
 <p align="center">
-  <img src=sidebar.png/>
+  <img src=./images/sidebar.png/>
 </p>
 
 Here you can choose:
@@ -42,8 +42,8 @@ Once a valid selection is made, information request to CENACE will begin and a p
 The central area is where graph and plotting options are.
 
 <p align="center">
-  <img src=central_top.png/>
-  <img src=central_down.png/>
+  <img src=./images/central_top.png/>
+  <img src=./images/central_down.png/>
 </p>
 
 Here you can choose:
