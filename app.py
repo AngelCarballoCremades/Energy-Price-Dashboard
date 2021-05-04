@@ -1,15 +1,12 @@
 import streamlit as st
 from streamlit import caching
-import time
-import numpy as np
 import pandas as pd
 from datetime import datetime, date, timedelta
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 import plotly.express as px
 import base64
-# from functions import *
-# 
+
 
 week_days = {
     1:"Lunes",
@@ -62,7 +59,7 @@ def pack_dates(start_date, end_date, market):
 
 def get_node_system(node):
     """This functions pairs a node or zone to it's system"""
-    df = pd.read_csv('nodos2.csv')
+    df = pd.read_csv('nodos.csv')
 
     if df[df["CLAVE"] == node].shape[0]:
         system = df[df["CLAVE"] == node]["SISTEMA"].to_list()[0]
@@ -119,8 +116,6 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
     return urls_list
 
-# def bar_hash_func(bar):
-#     return bar.progress
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)#(hash_funcs={streamlit.delta_generator.DeltaGenerator: bar_hash_func})
 def get_info(urls_list):
@@ -453,13 +448,13 @@ def main():
     components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
 
     # List of nodes for multiselects
-    df = pd.read_csv('nodos2.csv')
+    df = pd.read_csv('nodos.csv')
     nodes_p = df['CLAVE'].tolist()
     nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
 
     # Dates for date_input creation and delimitation
     max_date = date.today()+timedelta(days=1)
-    min_date = datetime(2016, 1, 1)
+    min_date = datetime(2017, 2, 1)
     today = date.today()
     start_date = date.today()-timedelta(days=15)
 
@@ -476,6 +471,80 @@ def main():
         mda = st.checkbox('MDA', value=False)
     with col2:
         mtr = st.checkbox('MTR', value=False)
+
+    with st.beta_expander(label="Bienvenida", expanded=True):
+        st.write("""
+        #### ¡Hola!
+
+        Este proyecto está hecho para facilitar el análisis de los **precios de energía eléctrica en México**.
+        
+        **Selecciona uno o varios NodosP y/o NodosP Distribuidos, las fechas y el mercado** y la información se descargará automáticamente.
+
+        A las gráficas se les puede hacer zoom, ocultar trazos, descargar, etc. Revisa todo lo que puedes hacer con ellas [aquí](https://plotly.com/chart-studio-help/zoom-pan-hover-controls/).
+
+        Tengo pensado agregar varias cosas más, visualizaciones, información extra y lo que se me vaya ocurriendo. 
+
+        **Si tienes alguna sugerencia** no dudes en decirme en **[Linkedin](https://www.linkedin.com/in/angelcarballo/)** o **[Github](https://github.com/AngelCarballoCremades/Energy-Price-Dashboard)**.
+        
+        Espero que este proyecto te sea útil.
+
+        ### Ángel Carballo
+
+
+
+        """)
+        st.write("")
+    with st.beta_expander(label="Instrucciones", expanded=False):
+        st.write("""
+        Básicamente debes: 
+        
+        1. **Elegir** las opciones deseadas de la **barra lateral**.
+        2. **Esperar** a que la información se descargue y la gráfica aparezca.
+        3. **Seleccionar** el tipo de **visualización** deseada
+
+        
+        ### Barra lateral
+
+        Selecciona:
+        * **NodosP** y **NodosP Distribuidos** 
+            * Por lo menos uno debe ser seleccionado (de cualquier tipo).
+        * **Fechas** - Rango de fechas de información a solicitar. 
+            * Disponible desde febrero 2017 a mañana. Ten en cuenta que no todos los NodosP han existido en este rango.
+            * MTR disponible hasta hoy -7 días.
+            * MDA hasta hoy +1 día.
+        * **MDA** y **MTR**
+            * Por lo menos uno debe ser seleccionado.
+
+        Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
+        El tiempo que tarde dependerá de la información solicitada.
+
+        ### Área Central
+
+        Opciones a seleccionar:
+        * **Componente de Precio** - Componente del PML y/o PND a graficar $/MWh (MXN).
+        * **Promedio**
+            * **Horario** - Graficar promedio por hora (promedio simple).
+            * **Diario** - Graficar promedio por día (promedio simple).
+            * **Semanal** - Graficar promedio por semana (promedio simple).
+        * **Agrupar por**
+            * **Histórico** - Grafica la información sin modificación extra.
+            * **Día de la semana** - Grafica el promedio de cada hora para cada día de la semana. Utiliza la información solicitada en la barra lateral.
+                * Únicamente funciona con **Promedio**-**Horario** seleccionado.
+                * No es afectado por **Año vs Año**.
+            * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
+                * Únicamente funciona con **Promedio**-**Horario** seleccionado.
+                * No es afectado por **Año vs Año**.
+        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
+            * Únicamente funciona con **Agrupar por**-**Histórico** seleccionado.
+
+
+        Cada vez que se hace una selección, una gráfica será creada (si la selección es válida).
+        
+        La tabla del final muestra la información original descargada del CENACE. 
+        Puedes descargar toda la información con el botón **Descargar tabla completa**.
+        """)
+
+    st.write("###")
 
     # Check selected options
     print("Checking data...")
@@ -540,7 +609,6 @@ def main():
     col4.write("####")
     group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año. Selecciona 'Agrupar por'-'Histórico'.")    
 
-    # with st.beta_expander(label="Etiqueta", expanded=False):
     with st.spinner(text='Generando gráfica y tabla.'):
         print('Plotting...')
         df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
