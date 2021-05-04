@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit import caching
 import time
 import numpy as np
 import pandas as pd
@@ -9,6 +10,16 @@ import plotly.express as px
 import base64
 # from functions import *
 # 
+
+week_days = {
+    1:"Lunes",
+    2:"Martes",
+    3:"Miércoles",
+    4:"Jueves",
+    5:"Viernes",
+    6:"Sábado",
+    7:"Domingo",
+    }
 
 def check_dates(dates):
     if len(dates)!=2:
@@ -135,16 +146,13 @@ def get_info(urls_list):
         else:
             if "Message" in json_data.keys():
                 print(json_data)
-                continue
+                return False
 
         dfs.append(json_to_dataframe(json_data))
         print('.')
 
     bar.progress(100)
-    time.sleep(0.5)
-    bar_string.empty()
-    bar.empty()
-
+        
     try:
         df = pd.concat(dfs) # Join downloaded info in one data frame
     except:
@@ -152,6 +160,9 @@ def get_info(urls_list):
     
     df.reset_index(drop=True, inplace=True)
     
+    bar_string.empty()
+    bar.empty()
+
     return df
 
 
@@ -214,6 +225,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             if agg_option == "Histórico":
                 df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
                 df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+                df["Año"] = df['Fecha_g'].dt.year
                 df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
                 return df
             
@@ -223,16 +235,16 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
                 df['Día de la semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
                 # df['Hora'] = df['Hora'].apply(lambda x: x if int(x)>9 else f'0{x}')
                 # df['Día-Hora'] = df['Día de la semana'] + "_" + df['Hora']
-                print(df.T)
+                # print(df.T)
                 df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Día de la semana','Hora_g']).mean()
                 df.reset_index(inplace=True)
-                print(df.T)
+                # print(df.T)
                 # df['Día'] = df['Día-Hora'].apply(lambda x: x[0])
                 # df['Hora'] = df['Día-Hora'].apply(lambda x: int(x[-2:])-1)
                 
                 df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
                 df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
-                print(df.T)
+                # print(df.T)
                 df.sort_values(by='Día-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
                 return df
 
@@ -244,6 +256,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             df.reset_index(inplace=True)
             df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
+            df["Año"] = df['Fecha_g'].dt.year
             return df
 
         elif avg_option == "Semanal":
@@ -255,18 +268,59 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             df.reset_index(inplace=True)
             df.sort_values(by=['Año-Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
             # df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
+            # df["Año"] = df['Año-Semana'].apply(lambda x: x[:4])
             return df
 
+    def group_by_year(df,group, avg_option, agg_option):
+        if not group:
+            df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
+            
+        else:
+            if avg_option == "Horario":
+                if agg_option == "Histórico":
+                    # df = df[(df['Fecha_g'] > '2013-01-01') & (df['date'] < '2013-02-01')]
+                    df['Fecha_g'] = df['Fecha_g'].apply(lambda x: x.replace(year = 2020))
+                    # df["Fecha_g"] = df['Fecha_g'].dt.strftime('%m-%d %H:%M:%S')
+                    df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
+                    return df
+                
+                elif agg_option == "Día de la semana":
+                    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+
+                elif agg_option == "Mes":
+                    pass
+
+            elif avg_option == "Diario":
+                df['Fecha_g'] = df['Fecha_g'].apply(lambda x: x.replace(year = 2020))
+                # df["Fecha_g"] = df['Fecha_g'].dt.strftime('%m-%d %H:%M:%S')
+                df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
+                return df
+
+            elif avg_option == "Semanal":
+                df["Año"] = df['Año-Semana'].apply(lambda x: x[:4])
+                df["Semana"] = df['Año-Semana'].apply(lambda x: x[-2:])
+                df.sort_values(by=['Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
+                df["Nodo-Mercado"] = df["Año"] + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"]
+                return df
+            
+                # df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+                # df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
+                
+        
+        return df
+    # print(df)
     df = use_avg_option(df, avg_option, agg_option)
     # print(df)
+    df = group_by_year(df, group, avg_option, agg_option)
+    # print(df)
     
-    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
+    
     
     return df
 
 def arange_dataframe_for_table(df, component, download = False):
 
-    print(df)
+    # print(df)
     df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
     df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
     df_table.columns = df_table.columns.to_series().values
@@ -276,21 +330,35 @@ def arange_dataframe_for_table(df, component, download = False):
 
     return df_table
 
-def plot_df(df, component, avg_option, agg_option):
+def plot_df(df, component, avg_option, agg_option, group):
     
     if avg_option == 'Semanal':
-        fig = px.line(
-            data_frame=df, 
-            x="Año-Semana", 
-            y=component, 
-            color='Nodo-Mercado',
-            hover_data=['Año-Semana', "Nodo-Mercado", component],
-            width=900, 
-            height=600,
-            labels={
-                "Año-Semana": ""
-                }
-            )
+        if group:
+            fig = px.line(
+                data_frame=df, 
+                x="Semana", 
+                y=component, 
+                color='Nodo-Mercado',
+                hover_data=['Año-Semana', "Nodo-Mercado", component],
+                width=900, 
+                height=600,
+                labels={
+                    "Semana": ""
+                    }
+                )
+        else:
+            fig = px.line(
+                data_frame=df, 
+                x="Año-Semana", 
+                y=component, 
+                color='Nodo-Mercado',
+                hover_data=['Año-Semana', "Nodo-Mercado", component],
+                width=900, 
+                height=600,
+                labels={
+                    "Año-Semana": ""
+                    }
+                )
     
     elif avg_option == "Horario" and agg_option == "Día de la semana":
         fig = px.line(
@@ -307,6 +375,27 @@ def plot_df(df, component, avg_option, agg_option):
             )
         fig.update_layout(
             xaxis_tickformat = '%a (%S)')
+        
+        for i in range(1,7): 
+            fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
+        for i in range(1,8):
+            fig.add_vrect(x0=f"2021-03-{i} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=week_days[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+
+    elif group:
+        fig = px.line(
+            data_frame=df, 
+            x="Fecha_g", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Fecha', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Fecha_g": ""
+                }
+            )
+        fig.update_layout(
+            xaxis_tickformat = '%b-%d')
 
     else:
         fig = px.line(
@@ -333,7 +422,7 @@ def plot_df(df, component, avg_option, agg_option):
         hovermode="x"
     )
     fig.update_traces(
-        mode="markers+lines",
+        mode="lines",#"markers+lines",
         hovertemplate=None
         )
     fig.update_xaxes(
@@ -354,7 +443,7 @@ def get_table_download_link(df,dates):
     file_name = f"energy_prices_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
-    href = f'<a href="data:file/csv;base64,{b64}" download="{file_name}">Descargar tabla</a>'
+    href = f'<a href="data:file/csv;base64,{b64}" download="{file_name}">Descargar tabla completa</a>'
     return href
 
 def main():
@@ -431,31 +520,39 @@ def main():
     print("Requesting...")
 
    
-    df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else None
+    df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
     # st.write(df_requested.astype('object'))
+
+    if isinstance(df_requested, bool):
+        caching.clear_cache()
+        st.sidebar.warning('Error extrayendo datos del CENACE, intenta cambiar fechas o mercados seleccionados.')
+        st.stop()
+    
     
     df_requested_clean = check_for_23_or_25_hours(df_requested)
     # st.write(df_requested_clean.astype('object'))
-    
 
     col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-    component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help=None)
+    component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
     
-    avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0)
-    agg_option = col3.selectbox("Agrupar por", get_agg_options(avg_option), 0)
-    col4.subheader('')
-    group = col4.checkbox('Comparar Periodos', value=False)    
+    avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
+    agg_option = col3.selectbox("Agrupar por", get_agg_options(avg_option), 0, help = "Selecciona 'Promedio'-'Horario' para ver las opciones.")
+    col4.write("####")
+    group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año. Selecciona 'Agrupar por'-'Histórico'.")    
 
-    print('Plotting...')
-    df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
-    st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option), use_container_width=True)#use_column_width=True
+    # with st.beta_expander(label="Etiqueta", expanded=False):
+    with st.spinner(text='Generando gráfica y tabla.'):
+        print('Plotting...')
+        df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+        st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
-    print("Making table...")
-    df_table = arange_dataframe_for_table(df_requested_clean.copy(), component)
-    st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
-    st.dataframe(df_table.style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
-    # st.write(df_table.astype('object'))
-    
+        print("Making table...")
+        df_table = arange_dataframe_for_table(df_requested_clean.copy(), component)
+        st.markdown('Primeras 1000 filas de información:')
+        st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
+        st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
+        
+        
     print('Done')
 
 if __name__ == "__main__":
