@@ -18,6 +18,21 @@ week_days = {
     7:"Domingo",
     }
 
+months = {
+    1:"Enero",
+    2:"Febrero",
+    3:"Marzo",
+    4:"Abril",
+    5:"Mayo",
+    6:"Junio",
+    7:"Julio",
+    8:"Agosto",
+    9:"Sept",
+    10:"Octubre",
+    11:"Noviembre",
+    12:"Diciembre"
+    }
+
 def check_dates(dates):
     if len(dates)!=2:
         st.stop()
@@ -194,7 +209,7 @@ def json_to_dataframe(json_file):
     # print(df)
     return df
 
-# @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
+
 def check_for_23_or_25_hours(df_requested):
     df = df_requested[df_requested['Hora'] != '25']
     # index_25 = df_requested[df_requested['Hora'] == '25'].index.to_list()
@@ -203,7 +218,7 @@ def check_for_23_or_25_hours(df_requested):
     return df
 
 def get_agg_options(avg_option):
-    # avg_options = ["Horario", "Diario", "Semanal"]
+
     if avg_option == "Horario":
         return ["Histórico","Día de la semana", "Mes"]
     if avg_option == "Diario":
@@ -214,7 +229,7 @@ def get_agg_options(avg_option):
 
 def arange_dataframe_for_plot(df, avg_option, agg_option, group):
     
-    def use_avg_option(df, avg_option, agg_option):
+    def use_avg_option(df, avg_option, agg_option, group):
 
         if avg_option == "Horario":
             if agg_option == "Histórico":
@@ -228,23 +243,44 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
                 df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
                 df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
                 df['Día de la semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
-                # df['Hora'] = df['Hora'].apply(lambda x: x if int(x)>9 else f'0{x}')
-                # df['Día-Hora'] = df['Día de la semana'] + "_" + df['Hora']
-                # print(df.T)
-                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Día de la semana','Hora_g']).mean()
-                df.reset_index(inplace=True)
-                # print(df.T)
-                # df['Día'] = df['Día-Hora'].apply(lambda x: x[0])
-                # df['Hora'] = df['Día-Hora'].apply(lambda x: int(x[-2:])-1)
+
+                if group:
+                    df["Año"] = df['Fecha_g'].dt.year
+                    df["Nodo-Mercado"] = df['Año'].apply(str) + "_" + df['Mercado'] + '_' + df["Nombre del Nodo"]
+                    df = df.groupby(['Nodo-Mercado','Día de la semana','Hora_g']).mean()
+                    # df.reset_index(inplace=True)
+                    # df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
+                    # df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
                 
+                else:
+                    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+                    df = df.groupby(['Nodo-Mercado','Día de la semana','Hora_g']).mean()                   
+
+                df.reset_index(inplace=True)
                 df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
                 df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
-                # print(df.T)
                 df.sort_values(by='Día-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
                 return df
 
             elif agg_option == "Mes":
-                pass
+                df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
+                df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
+                df['Mes'] = df['Fecha_g'].dt.month
+                
+                if group:
+                    df["Año"] = df['Fecha_g'].dt.year
+                    df["Nodo-Mercado"] = df['Año'].apply(str) + "_" + df['Mercado'] + '_' + df["Nombre del Nodo"]
+                    
+                else:
+                    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+                    
+                df = df.groupby(['Nodo-Mercado','Mes','Hora_g']).mean()
+                df.reset_index(inplace=True)
+                df['Mes'] = df['Mes'].apply(lambda x: str(int(x)) if int(x)>9 else f"0{int(x)}")
+                df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
+                df['Mes-Hora'] = pd.to_datetime("2021-03-" + df['Mes'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
+                df.sort_values(by='Mes-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
+                return df
 
         elif avg_option == "Diario":
             df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
@@ -257,17 +293,22 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
         elif avg_option == "Semanal":
             df["Fecha"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             df['Año-Semana'] = df['Fecha'].apply(lambda x: ".".join([str(x.isocalendar()[0]), str(x.isocalendar()[1]) if x.isocalendar()[1] > 9 else f"0{str(x.isocalendar()[1])}" ]))
-            # df['Año'] = df['Fecha'].apply(lambda x: x.isocalendar()[0])
-            # st.dataframe(df[['Año-Semana','Fecha']])#.sort_values(by=['Semana','Fecha'], axis=0, ascending=True))
             df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Año-Semana']).mean()
             df.reset_index(inplace=True)
             df.sort_values(by=['Año-Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
-            # df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
-            # df["Año"] = df['Año-Semana'].apply(lambda x: x[:4])
             return df
 
     def group_by_year(df,group, avg_option, agg_option):
-        if not group:
+        
+        if agg_option in ["Día de la semana","Mes"]:
+            # df["Nodo-Mercado"] = df['Día-Hora'].dt.year.apply(str) + "_" + df['Mercado'] + '_' + df["Nombre del Nodo"]
+            pass
+
+        
+            # df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+            # pass
+
+        elif not group:
             df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
             
         else:
@@ -279,11 +320,13 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
                     df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
                     return df
                 
-                elif agg_option == "Día de la semana":
-                    df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+                # elif agg_option == "Día de la semana":
+                #     # df["Nodo-Mercado"] = df['Día-Hora'].dt.year.apply(str) + "_" + df['Mercado'] + '_' + df["Nombre del Nodo"]
+                #     pass
 
-                elif agg_option == "Mes":
-                    pass
+                # elif agg_option == "Mes":
+                #     # df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
+                #     pass
 
             elif avg_option == "Diario":
                 df['Fecha_g'] = df['Fecha_g'].apply(lambda x: x.replace(year = 2020))
@@ -304,7 +347,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
         
         return df
     # print(df)
-    df = use_avg_option(df, avg_option, agg_option)
+    df = use_avg_option(df, avg_option, agg_option, group)
     # print(df)
     df = group_by_year(df, group, avg_option, agg_option)
     # print(df)
@@ -374,7 +417,31 @@ def plot_df(df, component, avg_option, agg_option, group):
         for i in range(1,7): 
             fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
         for i in range(1,8):
-            fig.add_vrect(x0=f"2021-03-{i} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=week_days[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+            fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=week_days[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+
+    elif avg_option == "Horario" and agg_option == "Mes":
+        fig = px.line(
+            data_frame=df, 
+            x="Mes-Hora", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Mes-Hora', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Mes-Hora": ""
+                }
+            )
+        fig.update_layout(
+            xaxis_tickformat = '%d (%S)')
+
+        for i in range(1,12): 
+            fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
+        for i in range(1,13):
+            fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=months[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+            # print(i, months[i], f"2021-03-{i} 00:30 2021-03-{i+1} 00:30")
+        
+        
 
     elif group:
         fig = px.line(
@@ -472,6 +539,7 @@ def main():
     with col2:
         mtr = st.checkbox('MTR', value=False)
 
+    
     with st.beta_expander(label="Bienvenida", expanded=True):
         st.write("""
         #### ¡Hola!
