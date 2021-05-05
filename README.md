@@ -63,9 +63,8 @@ Here you can choose:
     * **Mes** - Plots average of each hour grouped by month. Takes into account all information requested.
         * Only works with **Promedio**-**Horario** selected.
 * **Año vs Año** - Makes different lines for every year in selected info.
-    * Only works with **Agrupar por**-**Histórico** selected.
 
-Every time a selection is made, a new graph will be rendered (if selection is valid).
+Every time a selection is made, a new graph will be rendered.
 There is a table at the bottom showing original requested data, it only changes whith information requested.
 All data can be downloaded via a cvs file with the **Descargar tabla completa** button.
 
