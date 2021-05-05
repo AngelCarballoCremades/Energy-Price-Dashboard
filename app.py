@@ -510,7 +510,7 @@ def get_table_download_link(df,dates):
 
 def main():
 
-    st.set_page_config(page_title="Precios del MEM", layout="wide", initial_sidebar_state="expanded")
+    st.set_page_config(page_title="Energía México", layout="wide", initial_sidebar_state="expanded")
     
     components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
 
@@ -518,6 +518,10 @@ def main():
     df = pd.read_csv('nodos.csv')
     nodes_p = df['CLAVE'].tolist()
     nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
+
+    nodes_p.sort()
+    nodes_d.sort()
+
 
     # Dates for date_input creation and delimitation
     max_date = date.today()+timedelta(days=1)
@@ -539,14 +543,20 @@ def main():
     with col2:
         mtr = st.checkbox('MTR', value=False)
 
-    
-    with st.beta_expander(label="Bienvenida", expanded=True):
+        # **Selecciona uno o varios NodosP y/o NodosP Distribuidos, las fechas y el mercado** y la información se descargará automáticamente.
+    welcome = st.beta_expander(label="Bienvenida", expanded=True)
+    with welcome:
         st.write("""
         #### ¡Hola!
 
         Este proyecto está hecho para facilitar el análisis de los **precios de energía eléctrica en México**.
         
-        **Selecciona uno o varios NodosP y/o NodosP Distribuidos, las fechas y el mercado** y la información se descargará automáticamente.
+        Básicamente debes: 
+        
+        1. **Elegir** las opciones deseadas de la **barra lateral**.
+        2. **Esperar** a que la información se descargue y la gráfica aparezca.
+        3. **Seleccionar** el tipo de **visualización** deseada.
+        ####
 
         A las gráficas se les puede hacer zoom, ocultar trazos, descargar, etc. Revisa todo lo que puedes hacer con ellas [aquí](https://plotly.com/chart-studio-help/zoom-pan-hover-controls/).
 
@@ -562,14 +572,11 @@ def main():
 
         """)
         st.write("")
-    with st.beta_expander(label="Instrucciones", expanded=False):
+    
+    instructions = st.beta_expander(label="Instrucciones", expanded=False)
+    with instructions:
         st.write("""
-        Básicamente debes: 
         
-        1. **Elegir** las opciones deseadas de la **barra lateral**.
-        2. **Esperar** a que la información se descargue y la gráfica aparezca.
-        3. **Seleccionar** el tipo de **visualización** deseada
-
         
         ### Barra lateral
 
@@ -598,21 +605,19 @@ def main():
             * **Histórico** - Grafica la información sin modificación extra.
             * **Día de la semana** - Grafica el promedio de cada hora para cada día de la semana. Utiliza la información solicitada en la barra lateral.
                 * Únicamente funciona con **Promedio**-**Horario** seleccionado.
-                * No es afectado por **Año vs Año**.
             * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
                 * Únicamente funciona con **Promedio**-**Horario** seleccionado.
-                * No es afectado por **Año vs Año**.
         * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
-            * Únicamente funciona con **Agrupar por**-**Histórico** seleccionado.
 
 
-        Cada vez que se hace una selección, una gráfica será creada (si la selección es válida).
+        Cada vez que se hace una selección, una gráfica será creada o modificada.
         
         La tabla del final muestra la información original descargada del CENACE. 
         Puedes descargar toda la información con el botón **Descargar tabla completa**.
         """)
 
     st.write("###")
+
 
     # Check selected options
     print("Checking data...")
@@ -658,6 +663,8 @@ def main():
 
    
     df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
+    welcome.expanded = False
+    instructions.expanded = False
     # st.write(df_requested.astype('object'))
 
     if isinstance(df_requested, bool):
@@ -675,7 +682,7 @@ def main():
     avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
     agg_option = col3.selectbox("Agrupar por", get_agg_options(avg_option), 0, help = "Selecciona 'Promedio'-'Horario' para ver las opciones.")
     col4.write("####")
-    group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año. Selecciona 'Agrupar por'-'Histórico'.")    
+    group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
     with st.spinner(text='Generando gráfica y tabla.'):
         print('Plotting...')
@@ -687,7 +694,9 @@ def main():
         st.markdown('Primeras 1000 filas de información:')
         st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}))
         st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
-        
+
+           
+            
         
     print('Done')
 
