@@ -93,11 +93,14 @@ def instructions_text():
             * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
         * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
 
-
         Cada vez que se hace una selección, una gráfica será creada o modificada.
         
-        La tabla del final muestra la información original descargada del CENACE. 
-        Puedes descargar toda la información con el botón **Descargar datos**.
+        * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
+        * **Primeras 1000 filas de datos:** - Tabla mostrando 100 primeras filas de la información horaria.
+        
+        Puedes descargar toda la información a un cvs con el botón **Descargar datos**.
+
+
         """
 
 def check_dates(dates):
