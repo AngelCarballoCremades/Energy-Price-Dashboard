@@ -597,8 +597,7 @@ def get_table_download_link(df,dates):
 
 def main():
 
-    st.set_page_config(page_title="Energía México", layout="wide", initial_sidebar_state="expanded")
-    
+    st.set_page_config(page_title="Energía México", page_icon='logo.png', layout="wide", initial_sidebar_state="expanded")
     components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
 
     # List of nodes for multiselects
