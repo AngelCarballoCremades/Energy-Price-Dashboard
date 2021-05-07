@@ -59,19 +59,19 @@ Here you can choose:
 * **Agrupar por** - Plot hourly info by different graph types.
     * **Histórico** - Shows all info requested, no modification made.
     * **Día de la semana** - Plots average of each hour grouped by every day of the week. Takes into account all information requested.
-        * Only works with **Promedio**-**Horario** selected.
     * **Mes** - Plots average of each hour grouped by month. Takes into account all information requested.
-        * Only works with **Promedio**-**Horario** selected.
 * **Año vs Año** - Makes different lines for every year in selected info.
 
 Every time a selection is made, a new graph will be rendered.
-There is a table at the bottom showing original requested data, it only changes whith information requested.
-All data can be downloaded via a cvs file with the **Descargar tabla completa** button.
+
+* **Resumen de datos horarios:** - Table showing min, max, average and stdev of hourly values.
+* **Primeras 1000 filas de datos:** - Table showing first 1000 rows of hourly info.
+All data can be downloaded via a cvs file with the **Descargar datos** button.
 
 ## Future Updates
 This are changes or updates planned to be done some time soon.
 * Add MTR-MDA button to graph the difference between the two.
-* Add table showing avg, std, min, max, and interesting information of data.
+* Add analysis for extra info (Servicios conexos, Santidades asignadas)
 
 I will always be exploring new visualizations, feel free to ask for something to be added or modified!
 
