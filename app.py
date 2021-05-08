@@ -624,7 +624,7 @@ def main():
 
     # Nodes multiselect
     selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
-    selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d, 'OAXACA')
+    selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
 
     # Date picker
     dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
@@ -632,7 +632,7 @@ def main():
     # MDA and MTR checkboxes
     col1, col2, *_ = st.sidebar.beta_columns(4)
     with col1:
-        mda = st.checkbox('MDA', value=True)
+        mda = st.checkbox('MDA', value=False)
     with col2:
         mtr = st.checkbox('MTR', value=False)
 
