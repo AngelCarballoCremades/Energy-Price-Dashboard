@@ -42,7 +42,7 @@ def welcome_text():
         Básicamente debes: 
         
         1. **Elegir** las opciones deseadas de la **barra lateral**.
-        2. **Esperar** a que la información se descargue y la gráfica aparezca.
+        2. **Esperar** a que la información se descargue y la gráfica aparezca (**Si no la ves, desplázate hacia abajo**).
         3. **Seleccionar** el tipo de **visualización** deseada.
         ####
 
