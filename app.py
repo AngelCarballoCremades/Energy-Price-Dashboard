@@ -50,11 +50,11 @@ def welcome_text():
 
         Tengo pensado agregar varias cosas más, visualizaciones, información extra y lo que se me vaya ocurriendo. 
 
-        **Si tienes alguna sugerencia** no dudes en decirme en **[Linkedin](https://www.linkedin.com/in/angelcarballo/)** o **[Github](https://github.com/AngelCarballoCremades/Energy-Price-Dashboard)**.
+        Si tienes **alguna duda o sugerencia** no dudes en decirme por **[Linkedin](https://www.linkedin.com/in/angelcarballo/)** o **[Github](https://github.com/AngelCarballoCremades/Energy-Price-Dashboard)**.
         
         Espero que este proyecto te sea útil.
 
-        ### Ángel Carballo
+        ### Ángel :v:
 
 
 
@@ -598,7 +598,13 @@ def get_table_download_link(df,dates):
 def main():
 
     st.set_page_config(page_title="Energía México", page_icon='logo.png', layout="wide", initial_sidebar_state="expanded")
-    components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
+    
+    col1, col2, = st.beta_columns([1,9])
+    
+    col1.image("logo.png")#, width=100)
+    col2.write("# Energía México")
+    col2.markdown("Un proyecto de [Ángel Carballo](https://www.linkedin.com/in/angelcarballo/)")
+    # col2.subheader()
 
     # List of nodes for multiselects
     df = pd.read_csv('nodos.csv')
@@ -698,10 +704,15 @@ def main():
     df_requested_clean = check_for_23_or_25_hours(df_requested)
     # st.write(df_requested_clean.astype('object'))
 
+    components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
+    avg_options = ["Horario", "Diario", "Semanal"]
+    agg_options = ["Histórico","Día de la semana", "Mes"]
+ 
     col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
+    
     component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
-    avg_option = col2.selectbox("Promedio", ["Horario", "Diario", "Semanal"], 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-    agg_option = col3.selectbox("Agrupar por", ["Histórico","Día de la semana", "Mes"], 0)
+    avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
+    agg_option = col3.selectbox("Agrupar por", agg_options, 0)
     col4.write("####")
     group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
