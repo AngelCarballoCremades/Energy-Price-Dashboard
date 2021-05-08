@@ -613,19 +613,20 @@ def main():
     max_date = date.today()+timedelta(days=1)
     min_date = datetime(2017, 2, 1)
     today = date.today()
-    start_date = date.today()-timedelta(days=15)
+    start_date = today-timedelta(days=30)
+    end_date = today-timedelta(days=15)
 
     # Nodes multiselect
     selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
-    selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
+    selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d, 'OAXACA')
 
     # Date picker
-    dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, today))
+    dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
 
     # MDA and MTR checkboxes
     col1, col2, *_ = st.sidebar.beta_columns(4)
     with col1:
-        mda = st.checkbox('MDA', value=False)
+        mda = st.checkbox('MDA', value=True)
     with col2:
         mtr = st.checkbox('MTR', value=False)
 
@@ -686,13 +687,11 @@ def main():
 
    
     df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
-    welcome.expanded = False
-    instructions.expanded = False
     # st.write(df_requested.astype('object'))
 
     if isinstance(df_requested, bool):
         caching.clear_cache()
-        st.sidebar.warning('Error extrayendo datos del CENACE, intenta cambiar fechas o mercados seleccionados.')
+        st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
         st.stop()
     
     
