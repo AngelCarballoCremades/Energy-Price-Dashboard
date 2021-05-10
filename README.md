@@ -71,7 +71,7 @@ All data can be downloaded via a cvs file with the **Descargar datos** button.
 ## Future Updates
 This are changes or updates planned to be done some time soon.
 * Add MTR-MDA button to graph the difference between the two.
-* Add analysis for extra info (Servicios conexos, Santidades asignadas)
+* Add analysis for extra info (Servicios conexos, Cantidades asignadas)
 
 I will always be exploring new visualizations, feel free to ask for something to be added or modified!
 
