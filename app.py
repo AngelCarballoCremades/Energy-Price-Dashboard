@@ -33,6 +33,15 @@ months = {
     12:"Diciembre"
     }
 
+reservas = {
+    'Reserva de regulación secundaria':"Reserva de Regulación Secundaria [$/MWh]",
+    'Reserva rodante de 10 minutos':"Reserva Rodante de 10 Minutos [$/MWh]",
+    'Reserva no rodante de 10 minutos':"Reserva No Rodante de 10 Minutos [$/MWh]",
+    'Reserva rodante suplementaria':"Reserva Rodante Suplementaria [$/MWh]",
+    'Reserva no rodante suplementarias':"Reserva No Rodante Suplementaria [$/MWh]"    
+}
+
+
 def welcome_text():
     return """
         #### ¡Hola!
@@ -102,6 +111,16 @@ def instructions_text():
 
 
         """
+@st.cache()
+def get_nodes_list():
+    df = pd.read_csv('nodos.csv')
+    nodes_p = df['CLAVE'].tolist()
+    nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
+
+    nodes_p.sort()
+    nodes_d.sort()
+
+    return nodes_p, nodes_d
 
 def check_dates(dates):
     if len(dates)!=2:
@@ -110,6 +129,11 @@ def check_dates(dates):
 def check_nodes(selected_nodes_p, selected_nodes_d):
     if selected_nodes_p == selected_nodes_d:
         st.sidebar.warning('Selecciona un NodoP o NodoP Distribuido')
+        st.stop()
+
+def check_zones(selected_zones):
+    if len(selected_zones) == 0:
+        st.sidebar.warning('Selecciona una Zona de Reserva')
         st.stop()
 
 def check_markets(mda, mtr):
@@ -178,7 +202,8 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
     url_frame = {
         'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
-        'PML':'https://ws01.cenace.gob.mx:8082/SWPML/SIM/'
+        'PML':'https://ws01.cenace.gob.mx:8082/SWPML/SIM/',
+        'PSC':'https://ws01.cenace.gob.mx:8082/SWPSC/SIM/'
         }
 
     urls_list = []
@@ -226,6 +251,7 @@ def get_info(urls_list):
         else:
             if "Message" in json_data.keys():
                 print(json_data)
+                print(resp.request.url)
                 return False
 
         dfs.append(json_to_dataframe(json_data))
@@ -261,6 +287,16 @@ def json_to_dataframe(json_file):
     df['Fecha'] = df['Valores'].apply(lambda x: x['fecha'])
     df['Hora'] = df['Valores'].apply(lambda x: x['hora'])
 
+    if json_file['nombre'] == 'PSC':
+        df['Nombre del Nodo'] = df['clv_zona_reserva']
+        df['Reserva'] = df['Valores'].apply(lambda x: x['tipo_res'])
+        df['Precio'] = df['Valores'].apply(lambda x: x['pres']).astype("float")
+        df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva','Precio']]
+        df = df.set_index(['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva']).unstack().reset_index()
+        df.columns = [col[0] if col[1]=='' else reservas[col[1]] for col in df.columns]
+        
+        return df
+    
     if json_file['nombre'] == 'PEND':
         df['Precio Total [$/MWh]'] = df['Valores'].apply(lambda x: x['pz']).astype("float")
         df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_ene']).astype("float")
@@ -604,39 +640,7 @@ def main():
     col1.image("logo.png")#, width=100)
     col2.write("# Energía México")
     col2.markdown("Un proyecto de [Ángel Carballo](https://www.linkedin.com/in/angelcarballo/)")
-    # col2.subheader()
 
-    # List of nodes for multiselects
-    df = pd.read_csv('nodos.csv')
-    nodes_p = df['CLAVE'].tolist()
-    nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
-
-    nodes_p.sort()
-    nodes_d.sort()
-
-
-    # Dates for date_input creation and delimitation
-    max_date = date.today()+timedelta(days=1)
-    min_date = datetime(2017, 2, 1)
-    today = date.today()
-    start_date = today-timedelta(days=30)
-    end_date = today-timedelta(days=15)
-
-    # Nodes multiselect
-    selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
-    selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
-
-    # Date picker
-    dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
-
-    # MDA and MTR checkboxes
-    col1, col2, *_ = st.sidebar.beta_columns(4)
-    with col1:
-        mda = st.checkbox('MDA', value=False)
-    with col2:
-        mtr = st.checkbox('MTR', value=False)
-
-        # **Selecciona uno o varios NodosP y/o NodosP Distribuidos, las fechas y el mercado** y la información se descargará automáticamente.
     welcome = st.beta_expander(label="Bienvenida", expanded=True)
     with welcome:
         st.write(welcome_text())
@@ -648,95 +652,214 @@ def main():
 
     st.write("###")
 
+    selected_data = st.sidebar.radio(label='Selecciona la opción deseada:',options=['Precios de Energía','Servicios Conexos'], index=0, key=None)
+    st.sidebar.write("#")
+    st.sidebar.write("#")
 
-    # Check selected options
-    print("Checking data...")
+    if selected_data == 'Precios de Energía':
+
+        # List of nodes for multiselects
+        nodes_p, nodes_d = get_nodes_list()
+
+        # Dates for date_input creation and delimitation
+        max_date = date.today()+timedelta(days=1)
+        min_date = datetime(2017, 2, 1)
+        today = date.today()
+        start_date = today-timedelta(days=30)
+        end_date = today-timedelta(days=15)
+
+        # Nodes multiselect
+        selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
+        selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
+
+        # Date picker
+        dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
+
+        # MDA and MTR checkboxes
+        col1, col2, *_ = st.sidebar.beta_columns(4)
+        with col1:
+            mda = st.checkbox('MDA', value=False)
+        with col2:
+            mtr = st.checkbox('MTR', value=False)
+
+        # Check selected options
+        print("Checking data...")
+        
+        check_dates(dates)
+        check_nodes(selected_nodes_p, selected_nodes_d)
+        check_markets(mda, mtr)
+        start_date, end_date = dates
+
+        print("Getting info ready...")
+        dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
+        dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
+        nodes_d_system = list(map(get_node_system, selected_nodes_d))
+        nodes_p_system = list(map(get_node_system, selected_nodes_p))
+        
+        nodes_d = {
+            "SIN": pack_nodes([node[0] for node in nodes_d_system if node[1] == "SIN"], "PND"),
+            "BCA": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCA"], "PND"),
+            "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCS"], "PND")
+        }
+        nodes_p = {
+            "SIN": pack_nodes([node[0] for node in nodes_p_system if node[1] == "SIN"], "PML"),
+            "BCA": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCA"], "PML"),
+            "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCS"], "PML")
+        }
+        # print(nodes_d, nodes_p)
+        nodes_p_urls = []
+        nodes_d_urls = []
+
+        if mda:
+            nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mda, 'PML', 'MDA')
+            nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'PND', 'MDA')
+        
+        if mtr:        
+            nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
+            nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
+
+        if not len(nodes_d_urls + nodes_p_urls):
+            st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+            st.stop()
+
+        print("Requesting...")
+
     
-    check_dates(dates)
-    check_nodes(selected_nodes_p, selected_nodes_d)
-    check_markets(mda, mtr)
-    start_date, end_date = dates
+        df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
+        # st.write(df_requested.astype('object'))
 
-    print("Getting info ready...")
-    dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
-    dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
-    nodes_d_system = list(map(get_node_system, selected_nodes_d))
-    nodes_p_system = list(map(get_node_system, selected_nodes_p))
+        if isinstance(df_requested, bool):
+            caching.clear_cache()
+            st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
+            st.stop()
+        
+        
+        df_requested_clean = check_for_23_or_25_hours(df_requested)
+        # st.write(df_requested_clean.astype('object'))
+
+        components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
+        avg_options = ["Horario", "Diario", "Semanal"]
+        agg_options = ["Histórico","Día de la semana", "Mes"]
     
-    nodes_d = {
-        "SIN": pack_nodes([node[0] for node in nodes_d_system if node[1] == "SIN"], "PND"),
-        "BCA": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCA"], "PND"),
-        "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCS"], "PND")
-    }
-    nodes_p = {
-        "SIN": pack_nodes([node[0] for node in nodes_p_system if node[1] == "SIN"], "PML"),
-        "BCA": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCA"], "PML"),
-        "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCS"], "PML")
-    }
-    # print(nodes_d, nodes_p)
-    nodes_p_urls = []
-    nodes_d_urls = []
+        col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
+        
+        component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
+        avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
+        agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+        col4.write("####")
+        group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
-    if mda:
-        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mda, 'PML', 'MDA')
-        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'PND', 'MDA')
+        with st.spinner(text='Generando gráfica y tabla.'):
+            print('Plotting...')
+            df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+            st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
+
+            print("Making info table...")
+            df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
+            # st.markdown('')
+            st.markdown("""Resumen de datos horarios:""")
+            st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
+
+            print("Making table...")
+            df_table = arange_dataframe_for_table(df_requested.copy(), component)
+            st.markdown("")
+            st.markdown("")
+            st.markdown("""Primeras 1000 filas de datos:""")
+            st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
+            st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
+
+    if selected_data == 'Servicios Conexos':
+        
+        # Dates for date_input creation and delimitation
+        max_date = date.today()+timedelta(days=1)
+        min_date = datetime(2018, 5, 24)
+        today = date.today()
+        start_date = today-timedelta(days=30)
+        end_date = today-timedelta(days=15)
+
+        # Nodes multiselect
+        selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
+
+        # Date picker
+        dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
+
+        # MDA and MTR checkboxes
+        col1, col2, *_ = st.sidebar.beta_columns(4)
+        with col1:
+            mda = st.checkbox('MDA', value=False)
+        with col2:
+            mtr = st.checkbox('MTR', value=False)
+
+        # Check selected options
+        print("Checking data...")
+        
+        check_dates(dates)
+        check_zones(selected_zones)
+        check_markets(mda, mtr)
+        start_date, end_date = dates
+
+        print("Getting info ready...")
+        dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
+        dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
+
+        zones = {zone[1:4]:[[zone[1:4]]] for zone in selected_zones}
+
+        zones_urls = []
+
+        if mda:
+            zones_urls += get_urls_to_request(zones, dates_packed_mda, 'PSC', 'MDA')
+        
+        if mtr:        
+            zones_urls += get_urls_to_request(zones, dates_packed_mtr, 'PSC', 'MTR')
+
+        if not len(zones_urls):
+            st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+            st.stop()
+
+        print("Requesting...")
+
+        df_requested = get_info(zones_urls)
+  
+        if isinstance(df_requested, bool):
+            caching.clear_cache()
+            st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
+            st.stop()
+        
+        
+        df_requested_clean = check_for_23_or_25_hours(df_requested)
+        # st.write(df_requested_clean.astype('object'))
+
+        components = list(reservas.values())
+        print(components)
+        avg_options = ["Horario", "Diario", "Semanal"]
+        agg_options = ["Histórico","Día de la semana", "Mes"]
     
-    if mtr:        
-        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
-        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
+        col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
+        
+        component = col1.selectbox(label = "Tipo de Reserva",options=components, index=0, key=None)
+        avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
+        agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+        col4.write("####")
+        group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
-    if not len(nodes_d_urls + nodes_p_urls):
-        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
-        st.stop()
+        with st.spinner(text='Generando gráfica y tabla.'):
+            print('Plotting...')
+            df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+            st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
-    print("Requesting...")
+            print("Making info table...")
+            df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
+            # st.markdown('')
+            st.markdown("""Resumen de datos horarios:""")
+            st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
 
-   
-    df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
-    # st.write(df_requested.astype('object'))
-
-    if isinstance(df_requested, bool):
-        caching.clear_cache()
-        st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
-        st.stop()
-    
-    
-    df_requested_clean = check_for_23_or_25_hours(df_requested)
-    # st.write(df_requested_clean.astype('object'))
-
-    components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
-    avg_options = ["Horario", "Diario", "Semanal"]
-    agg_options = ["Histórico","Día de la semana", "Mes"]
- 
-    col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-    
-    component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
-    avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-    agg_option = col3.selectbox("Agrupar por", agg_options, 0)
-    col4.write("####")
-    group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
-
-    with st.spinner(text='Generando gráfica y tabla.'):
-        print('Plotting...')
-        df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
-        st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
-
-        print("Making info table...")
-        df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-        # st.markdown('')
-        st.markdown("""Resumen de datos horarios:""")
-        st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
-
-        print("Making table...")
-        df_table = arange_dataframe_for_table(df_requested.copy(), component)
-        st.markdown("")
-        st.markdown("")
-        st.markdown("""Primeras 1000 filas de datos:""")
-        st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-        st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
-
-           
-            
+            print("Making table...")
+            df_table = arange_dataframe_for_table(df_requested.copy(), component)
+            st.markdown("")
+            st.markdown("")
+            st.markdown("""Primeras 1000 filas de datos:""")
+            st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
+            st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
         
     print('Done')
 
