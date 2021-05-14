@@ -100,7 +100,7 @@ def instructions_text():
         ### Área Central
 
         Opciones a seleccionar:
-        * **Componente de Precio** - Componente del PML, PND o tipo de reserva a graficar $/MWh (MXN).
+        * **Componente de Precio** o **Tipo de Reserva** - Componente del PML, PND o tipo de reserva a graficar $/MWh (MXN).
         * **Promedio**
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple).
