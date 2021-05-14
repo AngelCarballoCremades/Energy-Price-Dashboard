@@ -6,6 +6,7 @@ from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 import plotly.express as px
 import base64
+import unidecode
 
 
 week_days = {
@@ -601,7 +602,8 @@ def plot_df(df, component, avg_option, agg_option, group):
             y=0.99,
             xanchor="left",
             x=0.01,
-            bgcolor = 'rgba(255,255,255,0.6)'
+            bgcolor = 'rgba(255,255,255,0.6)',
+            title_text=''
         ),
         hovermode="x"
     )
@@ -620,12 +622,24 @@ def plot_df(df, component, avg_option, agg_option, group):
     return fig
 
 @st.cache()
-def get_table_download_link(df,dates):
+def get_table_download_link(df,dates, component, info, markets):
     """Generates a link allowing the data in a given panda dataframe to be downloaded
     in:  dataframe
     out: href string
     """
-    file_name = f"energy_prices_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
+    if isinstance(info, int):
+        info = f"{info}_nodos"
+    else:
+        info = ("_").join(info)
+    
+    markets_info = []
+    if markets[0]:
+        markets_info.append("MDA")
+    if markets[1]:
+        markets_info.append("MTR")
+
+    file_name_header = unidecode.unidecode(component[:-8]).replace(' ',"_")
+    file_name = f"{file_name_header}_{info}_{('_').join(markets_info)}_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
     href = f'<a href="data:file/csv;base64,{b64}" download="{file_name}">Descargar datos</a>'
@@ -766,7 +780,7 @@ def main():
             st.markdown("")
             st.markdown("""Primeras 1000 filas de datos:""")
             st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-            st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
+            st.markdown(get_table_download_link(df_table, dates, component, info=len(selected_nodes_d+selected_nodes_p), markets=[mda,mtr]), unsafe_allow_html=True)
 
     if selected_data == 'Servicios Conexos':
         
@@ -859,7 +873,7 @@ def main():
             st.markdown("")
             st.markdown("""Primeras 1000 filas de datos:""")
             st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-            st.markdown(get_table_download_link(df_table,dates), unsafe_allow_html=True)
+            st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,mtr]), unsafe_allow_html=True)
         
     print('Done')
 
