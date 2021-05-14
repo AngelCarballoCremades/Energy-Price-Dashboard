@@ -77,12 +77,20 @@ def instructions_text():
         ### Barra lateral
 
         Selecciona:
-        * **NodosP** y **NodosP Distribuidos** 
-            * Por lo menos uno debe ser seleccionado (de cualquier tipo).
-        * **Fechas** - Rango de fechas de información a solicitar. 
-            * Disponible desde febrero 2017 a mañana. Ten en cuenta que no todos los NodosP han existido en este rango.
-            * MTR disponible hasta hoy -7 días.
-            * MDA hasta hoy +1 día.
+        * **Precios de Energia** 
+            * **NodosP** y **NodosP Distribuidos** 
+                * Por lo menos uno debe ser seleccionado (de cualquier tipo).
+            * **Fechas** - Rango de fechas de información a solicitar. 
+                * Disponible desde febrero 2017 a mañana. Ten en cuenta que no todos los NodosP han existido en este rango.
+                * MTR disponible hasta hoy -7 días.
+                * MDA hasta hoy +1 día.
+        * **Servicios Conexos**  
+            * **Zonas de Reserva**
+                * Por lo menos una debe ser seleccionada.
+            * **Fechas** - Rango de fechas de información a solicitar. 
+                * Disponible desde mayo 2018 a mañana.
+                * MTR disponible hasta hoy -7 días.
+                * MDA hasta hoy +1 día.
         * **MDA** y **MTR**
             * Por lo menos uno debe ser seleccionado.
 
@@ -92,7 +100,7 @@ def instructions_text():
         ### Área Central
 
         Opciones a seleccionar:
-        * **Componente de Precio** - Componente del PML y/o PND a graficar $/MWh (MXN).
+        * **Componente de Precio** - Componente del PML, PND o tipo de reserva a graficar $/MWh (MXN).
         * **Promedio**
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple).
