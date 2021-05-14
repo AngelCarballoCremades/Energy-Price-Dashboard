@@ -158,7 +158,7 @@ def check_markets(mda, mtr):
 def check_df_requested(df_requested):
     if isinstance(df_requested, bool):
         caching.clear_cache()
-        st.sidebar.warning('Error extrayendo datos MTR del CENACE. Inténtalo de nuevo o cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
+        st.sidebar.warning('Error extrayendo datos del CENACE. Inténtalo de nuevo o cambia las fechas solicitadas.')
         st.stop()
 
 def pack_dates(start_date, end_date, market):
