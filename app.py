@@ -122,6 +122,7 @@ def instructions_text():
         """
 @st.cache()
 def get_nodes_list():
+    "Gets list of NodosP and NodosP Distribuidos in file nodos.csv"
     df = pd.read_csv('nodos.csv')
     nodes_p = df['CLAVE'].tolist()
     nodes_d = [zona for zona in df['ZONA DE CARGA'].unique().tolist() if zona != "No Aplica"]
@@ -132,27 +133,38 @@ def get_nodes_list():
     return nodes_p, nodes_d
 
 def check_dates(dates):
+    """Checks if dates are selected"""
     if len(dates)!=2:
         st.stop()
 
 def check_nodes(selected_nodes_p, selected_nodes_d):
+    """Checks if there is at least a node selected"""
     if selected_nodes_p == selected_nodes_d:
         st.sidebar.warning('Selecciona un NodoP o NodoP Distribuido')
         st.stop()
 
 def check_zones(selected_zones):
+    """Checks if there is at least a Zona de Reserva selected"""
     if len(selected_zones) == 0:
         st.sidebar.warning('Selecciona una Zona de Reserva')
         st.stop()
 
 def check_markets(mda, mtr):
+    """Checks if there is at least a market selected"""
     if not any([mda, mtr]):
         st.sidebar.warning('Selecciona uno o dos mercados')
+        st.stop()
+
+def check_df_requested(df_requested):
+    if isinstance(df_requested, bool):
+        caching.clear_cache()
+        st.sidebar.warning('Error extrayendo datos MTR del CENACE. Inténtalo de nuevo o cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
         st.stop()
 
 def pack_dates(start_date, end_date, market):
     """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
     
+    # To avoid CENACE error in MTR API last date of MTR API call is limited
     if market == 'MTR' and end_date > date.today()-timedelta(days = 7):
         end_date = date.today()-timedelta(days = 7)
 
@@ -160,6 +172,7 @@ def pack_dates(start_date, end_date, market):
     delta = end_date-start_date
     days = delta.days
 
+    # Pack dates every 7 days.
     while days >= 0:
 
         if days >= 7:
@@ -176,7 +189,8 @@ def pack_dates(start_date, end_date, market):
     return dates
 
 def get_node_system(node):
-    """This functions pairs a node or zone to it's system"""
+    """This functions pairs a node or zone to it's system. Returns a tuple (Node, System)"""
+
     df = pd.read_csv('nodos.csv')
 
     if df[df["CLAVE"] == node].shape[0]:
@@ -191,8 +205,9 @@ def get_node_system(node):
     return (node, system)
 
 def pack_nodes(nodes, node_type):
-    """Returns a list of lists with nodes, this is done because depending on node type we have a maximum number of nodes per request ()PND is 10 max and PML is 20 max. PML missing"""
-    nodes = [node.replace(' ','-') for node in nodes]
+    """Returns a list of lists with nodes, this is done because depending on node type we have a maximum number of nodes per request (PND is 10 max and PML is 20 max)"""
+    
+    nodes = [node.replace(' ','-') for node in nodes] # Remove spaces from strings
 
     size_limit = 10 if node_type == 'PND' else 20
 
@@ -207,7 +222,73 @@ def pack_nodes(nodes, node_type):
 
     return nodos_api
 
+def get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda, mtr):
+    """Returns nodes urls to request"""
+
+    dates_packed_mda = pack_dates(start_date, end_date, 'MDA') # Pack dates for API calls
+    dates_packed_mtr = pack_dates(start_date, end_date, 'MTR') # Pack dates for API calls
+    
+    nodes_d_system = list(map(get_node_system, selected_nodes_d)) # Get selected-nodes system
+    nodes_p_system = list(map(get_node_system, selected_nodes_p)) # Get selected-nodes system
+    
+    # Pack nodes depending on system
+    nodes_d = {
+        "SIN": pack_nodes([node[0] for node in nodes_d_system if node[1] == "SIN"], "PND"),
+        "BCA": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCA"], "PND"),
+        "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCS"], "PND")
+    }
+    nodes_p = {
+        "SIN": pack_nodes([node[0] for node in nodes_p_system if node[1] == "SIN"], "PML"),
+        "BCA": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCA"], "PML"),
+        "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCS"], "PML")
+    }
+    
+    nodes_p_urls = []
+    nodes_d_urls = []
+
+    # Get urls from packed nodes and dates, separated by market
+    if mda:
+        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mda, 'PML', 'MDA')
+        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'PND', 'MDA')
+    
+    if mtr:        
+        nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
+        nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
+
+    # If there are no urls to call
+    if not len(nodes_d_urls + nodes_p_urls):
+        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+        st.stop()
+
+    return nodes_d_urls + nodes_p_urls
+
+def get_zones_urls(start_date, end_date, selected_zones, mda, mtr):
+    """Returns zones urls to request"""
+
+
+    dates_packed_mda = pack_dates(start_date, end_date, 'MDA') # Pack dates for API calls
+    dates_packed_mtr = pack_dates(start_date, end_date, 'MTR') # Pack dates for API calls
+
+    zones = {zone[1:4]:[[zone[1:4]]] for zone in selected_zones} # Pack zoness for function 'get_urls_to_request'
+
+    zones_urls = []
+
+    # Get urls from packed zones and dates, separated by market
+    if mda:
+        zones_urls += get_urls_to_request(zones, dates_packed_mda, 'PSC', 'MDA')
+    
+    if mtr:        
+        zones_urls += get_urls_to_request(zones, dates_packed_mtr, 'PSC', 'MTR')
+
+    # If there are no urls to call
+    if not len(zones_urls):
+        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+        st.stop()
+
+    return zones_urls, zones
+
 def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
+    """Assemble API calls urls for PMLs, PNDs and PSC"""
 
     url_frame = {
         'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
@@ -216,7 +297,7 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
         }
 
     urls_list = []
-    # for market in markets:
+    
     for system, nodes_packed in nodes_dict.items():
         if not len(nodes_packed[0]): 
             continue
@@ -238,43 +319,51 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)#(hash_funcs={streamlit.delta_generator.DeltaGenerator: bar_hash_func})
 def get_info(urls_list):
+    """Makes API calls for every url provided and returns a DataFrame with clean information."""
 
+    # Create loading bar in sidebar
     bar_string = st.sidebar.text('Cargando...')
     bar = st.sidebar.progress(0)
+
+    # Initialize futures session
     session = FuturesSession(max_workers=20)
     futures=[session.get(u) for u in urls_list]
 
-    dfs = [] # List of missing info data frames
+    dfs = [] # List of info data frames
 
     for i,future in enumerate(as_completed(futures)):
-        percentage = i*100//len(urls_list) 
+
+        percentage = i*100//len(urls_list) # Update loading bar progress
         bar.progress(percentage)
 
-        resp = future.result()
-        json_data = resp.json()
+        resp = future.result() # Url response
+        json_data = resp.json() # Get response json
 
+        # checks for response status, expected 'OK' status
         if "status" in json_data.keys():
-            if json_data["status"] != "OK":
+            if json_data["status"] != "OK": # If response != 'OK' don't append response. Usualy happens when there is no data available for nodes/date selected.
                 print(json_data)
                 continue
         else:
+            # When there is an error on CENACE's side (Usually in MTR API) there is a 'message' key in json response. If it's true entire process is cancelled (False is returned).
             if "Message" in json_data.keys():
                 print(json_data)
                 print(resp.request.url)
                 return False
 
-        dfs.append(json_to_dataframe(json_data))
-        print('.')
+        dfs.append(json_to_dataframe(json_data)) # Convert json to DataFrame and append to DataFrames'list
+        # print('.')
 
-    bar.progress(100)
+    bar.progress(100) # Process is complete
         
     try:
-        df = pd.concat(dfs) # Join downloaded info in one data frame
+        df = pd.concat(dfs) # Join downloaded info in one DataFrame
     except:
         df = None
     
     df.reset_index(drop=True, inplace=True)
     
+    # Eliminate progress bar
     bar_string.empty()
     bar.empty()
 
@@ -282,15 +371,17 @@ def get_info(urls_list):
 
 
 def json_to_dataframe(json_file):
-    """Reads json file, creates a list of nodes DataFrames and concatenates them. After that it cleans/orders the final df and returns it"""
+    """Reads json file, creates a list of nodes DataFrames and concatenates them. After that, it cleans/orders the final df and returns it"""
+    
     dfs = []
 
+    # Separate every node response and join in one DataFrame
     for node in json_file['Resultados']:
         dfs.append(pd.DataFrame(node))
 
-    df = pd.concat(dfs) # Join all data frames
+    df = pd.concat(dfs) # Join all DataFrame
 
-    # Clean/order df to same format of existing csv files
+    # Order all data into one same structure.
     df['Sistema'] = json_file['sistema']
     df['Mercado'] = json_file['proceso']
     df['Fecha'] = df['Valores'].apply(lambda x: x['fecha'])
@@ -321,11 +412,12 @@ def json_to_dataframe(json_file):
         df['Nombre del Nodo'] = df['clv_nodo'].copy()
 
     df = df[['Sistema','Mercado','Fecha','Hora','Nombre del Nodo','Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']]
-    # print(df)
+
     return df
 
 
 def check_for_23_or_25_hours(df_requested):
+    """Check for 25 or 23 hour days, works still missing in this function"""
     df = df_requested[df_requested['Hora'] != '25']
     # index_25 = df_requested[df_requested['Hora'] == '25'].index.to_list()
     # print(index_25)
@@ -333,8 +425,10 @@ def check_for_23_or_25_hours(df_requested):
     return df
 
 def arange_dataframe_for_plot(df, avg_option, agg_option, group):
+    """Modifies dataframe to plot desired information, changes output depending on average, aggregation and group option"""
     
     def use_avg_option(df, avg_option, agg_option, group):
+        """Modifies dataframe to plot desired avg_option"""
 
         if agg_option == "Día de la semana":
             df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
@@ -400,7 +494,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             return df
 
     def group_by_year(df,group, avg_option, agg_option):
-        
+        """Modifies dataframe to plot yaer vs year"""
         if agg_option in ["Día de la semana","Mes"]:
             return df
 
@@ -440,8 +534,8 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
 
 st.cache()
 def arange_dataframe_for_table(df, component, download = False):
-
-    # print(df)
+    """Modifies original df to show in table."""
+    
     df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
     df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
     df_table.columns = df_table.columns.to_series().values
@@ -452,12 +546,11 @@ def arange_dataframe_for_table(df, component, download = False):
     return df_table
 
 def arange_dataframe_for_info_table(df, component, group):
-    
+    """Obtains statistical measurements from original dataframe."""
 
     df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
     df['Hora'] = df['Hora'].astype('int')
     df["Año"] = df['Fecha_g'].dt.year
-    # df.sort_values(by=['Fecha_g','Hora'], axis=0, ascending=True, inplace=True, ignore_index=True)
 
     if group:
         df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
@@ -466,30 +559,21 @@ def arange_dataframe_for_info_table(df, component, group):
         df["Nodo-Mercado"] = df['Mercado'] + "_" + df["Nombre del Nodo"]
 
     df = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
-    
 
-    # print(df.describe().T)
-    # print(df.describe().T.columns)
     df = df.describe().T[['min','max','mean','std']]
-    # print(df)
+
     df.reset_index(inplace=True)
     df.columns = ['','Mínimo','Máximo','Promedio','Desviación Est.']
-    # print(df)
 
-    
-    # print(df)
     if group:
         df['nodo'] = df[''].apply(lambda x: x[9:])
         df['mercado'] = df[''].apply(lambda x: x[5:8])
         df['año'] = df[''].apply(lambda x: x[:4])
-        # print(df)
-        
         df.sort_values(by=['nodo','mercado','año'], axis=0, ascending=True, inplace=True, ignore_index=True)
 
     else:
         df['nodo'] = df[''].apply(lambda x: x[4:])
         df['mercado'] = df[''].apply(lambda x: x[:3])
-        # print(df)
 
         df.sort_values(by=['nodo','mercado'], axis=0, ascending=True, inplace=True, ignore_index=True)
 
@@ -501,7 +585,8 @@ def arange_dataframe_for_info_table(df, component, group):
 
 
 def plot_df(df, component, avg_option, agg_option, group):
-    
+    """Generates plot depending on selected options"""
+
     if agg_option == "Día de la semana":
         fig = px.line(
             data_frame=df, 
@@ -518,6 +603,7 @@ def plot_df(df, component, avg_option, agg_option, group):
         fig.update_layout(
             xaxis_tickformat = '%a (%S)')
         
+        # Add vertical lines and day-of-week names
         for i in range(1,7): 
             fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
         for i in range(1,8):
@@ -539,6 +625,7 @@ def plot_df(df, component, avg_option, agg_option, group):
         fig.update_layout(
             xaxis_tickformat = '%d (%S)')
 
+        # Add vertical lines and month names
         for i in range(1,12): 
             fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
         for i in range(1,13):
@@ -604,6 +691,7 @@ def plot_df(df, component, avg_option, agg_option, group):
                 }
             )
 
+    # Position legend and remove it's title
     fig.update_layout(
         legend=dict(
             yanchor="top",
@@ -635,49 +723,59 @@ def get_table_download_link(df,dates, component, info, markets):
     in:  dataframe
     out: href string
     """
+    # Extra info to show in file name
     if isinstance(info, int):
         info = f"{info}_nodos"
     else:
         info = ("_").join(info)
     
+    # Selected markets to show in file name
     markets_info = []
     if markets[0]:
         markets_info.append("MDA")
     if markets[1]:
         markets_info.append("MTR")
 
-    file_name_header = unidecode.unidecode(component[:-8]).replace(' ',"_")
+    file_name_header = unidecode.unidecode(component[:-8]).replace(' ',"_") # Remove special characters ó, í, á, etc from file name
     file_name = f"{file_name_header}_{info}_{('_').join(markets_info)}_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
+    
     csv = df.to_csv(index=False)
-    b64 = base64.b64encode(csv.encode()).decode()  # some strings <-> bytes conversions necessary here
+    b64 = base64.b64encode(csv.encode()).decode()
     href = f'<a href="data:file/csv;base64,{b64}" download="{file_name}">Descargar datos</a>'
     return href
 
 def main():
 
+    # Set page title, icon, layout wide (more used space in central area) and sidebar initial state
     st.set_page_config(page_title="Energía México", page_icon='logo.png', layout="wide", initial_sidebar_state="expanded")
     
+    # Central area header
     col1, col2, = st.beta_columns([1,9])
     
-    col1.image("logo.png")#, width=100)
+    col1.image("logo.png")
     col2.write("# Energía México")
     col2.markdown("Un proyecto de [Ángel Carballo](https://www.linkedin.com/in/angelcarballo/)")
 
+    # Welcome message
     welcome = st.beta_expander(label="Bienvenida", expanded=True)
     with welcome:
         st.write(welcome_text())
         st.write("")
     
+    # Instructions message
     instructions = st.beta_expander(label="Instrucciones", expanded=False)
     with instructions:
         st.write(instructions_text())
 
-    st.write("###")
 
+    st.write("###") # Vertical space
+
+    # Type of info to analyze
     selected_data = st.sidebar.radio(label='Selecciona la opción deseada:',options=['Precios de Energía','Servicios Conexos'], index=0, key=None)
     st.sidebar.write("#")
     st.sidebar.write("#")
 
+    # Precios de Energía Selected
     if selected_data == 'Precios de Energía':
 
         # List of nodes for multiselects
@@ -704,90 +802,63 @@ def main():
         with col2:
             mtr = st.checkbox('MTR', value=False)
 
-        # Check selected options
         print("Checking data...")
-        
+
+        # Check selected options        
         check_dates(dates)
         check_nodes(selected_nodes_p, selected_nodes_d)
         check_markets(mda, mtr)
-        start_date, end_date = dates
-
+        
         print("Getting info ready...")
-        dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
-        dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
-        nodes_d_system = list(map(get_node_system, selected_nodes_d))
-        nodes_p_system = list(map(get_node_system, selected_nodes_p))
+        start_date, end_date = dates # Unpack date range
         
-        nodes_d = {
-            "SIN": pack_nodes([node[0] for node in nodes_d_system if node[1] == "SIN"], "PND"),
-            "BCA": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCA"], "PND"),
-            "BCS": pack_nodes([node[0] for node in nodes_d_system if node[1] == "BCS"], "PND")
-        }
-        nodes_p = {
-            "SIN": pack_nodes([node[0] for node in nodes_p_system if node[1] == "SIN"], "PML"),
-            "BCA": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCA"], "PML"),
-            "BCS": pack_nodes([node[0] for node in nodes_p_system if node[1] == "BCS"], "PML")
-        }
-        # print(nodes_d, nodes_p)
-        nodes_p_urls = []
-        nodes_d_urls = []
-
-        if mda:
-            nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mda, 'PML', 'MDA')
-            nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'PND', 'MDA')
+        # Create urls (API calls) to request using selected options
+        nodes_urls = get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda, mtr)
         
-        if mtr:        
-            nodes_p_urls += get_urls_to_request(nodes_p, dates_packed_mtr, 'PML', 'MTR')
-            nodes_d_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'PND', 'MTR')
-
-        if not len(nodes_d_urls + nodes_p_urls):
-            st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
-            st.stop()
-
         print("Requesting...")
+        df_requested = get_info(nodes_urls) # Request created urls
 
-    
-        df_requested = get_info(nodes_d_urls + nodes_p_urls) if any([nodes_d_urls,nodes_p_urls])  else False
-        # st.write(df_requested.astype('object'))
-
-        if isinstance(df_requested, bool):
-            caching.clear_cache()
-            st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
-            st.stop()
+        # Check for error in request
+        check_df_requested(df_requested)
         
-        
+        # Deal with 23 and 25 hour days
         df_requested_clean = check_for_23_or_25_hours(df_requested)
-        # st.write(df_requested_clean.astype('object'))
 
+        # Plotting options
         components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
         avg_options = ["Horario", "Diario", "Semanal"]
         agg_options = ["Histórico","Día de la semana", "Mes"]
     
         col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-        
         component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
         avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
         agg_option = col3.selectbox("Agrupar por", agg_options, 0)
-        col4.write("####")
+        col4.write("####") # Vertical space
         group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
         with st.spinner(text='Generando gráfica y tabla.'):
+            
             print('Plotting...')
+            # Create DataFrame for plot and create plot
             df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
             st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
             print("Making info table...")
+            # Create DataFrame for info table and display info table
             df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-            # st.markdown('')
             st.markdown("""Resumen de datos horarios:""")
             st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
 
+            st.markdown("") # Vertical space
+            st.markdown("")
+
             print("Making table...")
+            # Create dataframe for table and display table
             df_table = arange_dataframe_for_table(df_requested.copy(), component)
-            st.markdown("")
-            st.markdown("")
             st.markdown("""Primeras 1000 filas de datos:""")
             st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
+            
+            # Download link
             st.markdown(get_table_download_link(df_table, dates, component, info=len(selected_nodes_d+selected_nodes_p), markets=[mda,mtr]), unsafe_allow_html=True)
 
     if selected_data == 'Servicios Conexos':
@@ -810,77 +881,65 @@ def main():
         with col1:
             mda = st.checkbox('MDA', value=False)
         with col2:
-            mtr = st.checkbox('MTR', value=False)
+            mtr = st.checkbox('MTR', value=False)     
+        
+        print("Checking data...")
 
         # Check selected options
-        print("Checking data...")
-        
         check_dates(dates)
         check_zones(selected_zones)
         check_markets(mda, mtr)
-        start_date, end_date = dates
 
         print("Getting info ready...")
-        dates_packed_mda = pack_dates(start_date, end_date, 'MDA')
-        dates_packed_mtr = pack_dates(start_date, end_date, 'MTR')
+        start_date, end_date = dates # Unpack date range
 
-        zones = {zone[1:4]:[[zone[1:4]]] for zone in selected_zones}
-
-        zones_urls = []
-
-        if mda:
-            zones_urls += get_urls_to_request(zones, dates_packed_mda, 'PSC', 'MDA')
-        
-        if mtr:        
-            zones_urls += get_urls_to_request(zones, dates_packed_mtr, 'PSC', 'MTR')
-
-        if not len(zones_urls):
-            st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
-            st.stop()
+        # Create urls (API calls) to request using selected options
+        zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, mtr)
 
         print("Requesting...")
+        df_requested = get_info(zones_urls) # Request created urls
 
-        df_requested = get_info(zones_urls)
-  
-        if isinstance(df_requested, bool):
-            caching.clear_cache()
-            st.sidebar.warning('Error extrayendo datos MTR del CENACE. Cambia la fecha final a una anterior (hoy -1 semana o antes) para evitarlo.')
-            st.stop()
+        # Check for error in request
+        check_df_requested(df_requested)
         
-        
+        # Deal with 23 and 25 hour days
         df_requested_clean = check_for_23_or_25_hours(df_requested)
-        # st.write(df_requested_clean.astype('object'))
 
+        # Plotting options
         components = list(reservas.values())
-        print(components)
         avg_options = ["Horario", "Diario", "Semanal"]
         agg_options = ["Histórico","Día de la semana", "Mes"]
     
         col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-        
         component = col1.selectbox(label = "Tipo de Reserva",options=components, index=0, key=None)
         avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
         agg_option = col3.selectbox("Agrupar por", agg_options, 0)
-        col4.write("####")
+        col4.write("####") # Vertical space
         group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
         with st.spinner(text='Generando gráfica y tabla.'):
+
             print('Plotting...')
+            # Create DataFrame for plot and create plot
             df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
             st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
             print("Making info table...")
+            # Create DataFrame for info table and display info table
             df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-            # st.markdown('')
             st.markdown("""Resumen de datos horarios:""")
             st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
 
+            st.markdown("") # Vertical space
+            st.markdown("")
+
             print("Making table...")
+            # Create dataframe for table and display table
             df_table = arange_dataframe_for_table(df_requested.copy(), component)
-            st.markdown("")
-            st.markdown("")
             st.markdown("""Primeras 1000 filas de datos:""")
             st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
+
+            # Download link
             st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,mtr]), unsafe_allow_html=True)
         
     print('Done')
