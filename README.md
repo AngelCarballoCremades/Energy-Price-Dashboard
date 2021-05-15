@@ -1,6 +1,6 @@
 # Energy Price Dashboard
 
-The objective of this project is bringing Mexico's Energy Market  (MEM) information closer to people. The main focus here is **Energy Price** and it's components.
+The objective of this project is bringing Mexico's Energy Market  (MEM) information closer to people.
 
 Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [Streamlit share](https://share.streamlit.io/angelcarballocremades/energy-price-dashboard/app.py)
 
@@ -15,7 +15,7 @@ Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [S
 8. Open browser and go to http://localhost:8501/ # Browser should open automatically
 
 ## Informatios Source
-Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf) and [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), individual files can be downloaded from here ([PML /PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx) [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx)).
+Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) and [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf), individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx) and [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx).
 
 
 ## Dashboard
@@ -31,23 +31,43 @@ The sidebar is where the information to request is selected.
 </p>
 
 Here you can choose:
-* **Precios de Energía**
-    * **NodosP** and **NodosP Distribuidos** 
-        * At least one must be selected from any type.
-    * **Fechas** - Range of date of the information to request. 
-        * From February 2017 to Tomorrow. Keep in mind that some NodosP didn't exist in available date range.
-        * MTR is available up to today -7 days.
-        * MDA is available up to tomorrow.
+* **Energía eléctrica**
+    * **Precios** - Price of electricity.
+        * **NodosP** and **NodosP Distribuidos** 
+            * At least one must be selected from any type.
+        * **Fechas** - Range of date of the information to request. 
+            * From February 2017 to Tomorrow. Keep in mind that some NodosP didn't exist in available date range.
+            * MTR is available up to today -7 days.
+            * MDA is available up to tomorrow.
+        * **MDA** and **MTR** markets
+            * At least one market must be selected.
+    * **Cantidades Asignadas** - Asigned quantities of energy by load zone.
+        * **Zona de Carga** 
+            * At least one must be selected.
+        * **Fechas** - Range of date of the information to request. 
+            * From January 2017 to Tomorrow.
+            * MDA is available up to tomorrow.
+        * **MDA** market
+            * For now, only MDA can be selected (MTR will be added soon).
 * **Servicios Conexos**
-    * **Zonas de Reserva** 
-        * At least one must be selected.
-    * **Fechas** - Range of date of the information to request. 
-        * From May 201 to Tomorrow.
-        * MTR is available up to today -7 days.
-        * MDA is available up to tomorrow.
-* **MDA** and **MTR** markets
-    * At least one must be selected.
-
+    * **Precios** - Price of electrical reserves.
+        * **Zonas de Reserva** 
+            * At least one must be selected.
+        * **Fechas** - Range of date of the information to request. 
+            * From May 2018 to Tomorrow.
+            * MTR is available up to today -7 days.
+            * MDA is available up to tomorrow.
+        * **MDA** and **MTR** markets
+            * At least one market must be selected.
+    * **Cantidades Asignadas** - Asigned quantities of reserves by zone.
+        * **Zonas de Reserva** 
+            * At least one must be selected.
+        * **Fechas** - Range of date of the information to request. 
+            * From May 2018 to Tomorrow.
+            * MDA is available up to tomorrow.
+        * **MDA** market
+            * For now, only MDA can be selected (MTR will be added soon).
+    
 Once a valid selection is made, information request to CENACE will begin and a progress bar will apear. Depending on the info size, it may take some seconds or up to minutes to finish.
 
 ### Central Area
@@ -59,9 +79,10 @@ The central area is where graph and plotting options are.
 </p>
 
 Here you can choose:
-* **Componente de Precio** or **Tipo de Reserva** - Depending on selection in sidebar
+* **Componente de Precio**, **Tipo de Carga** or **Tipo de Reserva** - Energy price component, load type or reserve type to analyze. Depends on selection in sidebar.
     * **Componente de Precio** - Energy component to plot in $/MWh (currency MXN).
-    * **Tipo de Reserva** - Type of electrical market reserve as defined by CENACE in $/MWh (currency MXN).
+    * **Tipo de Carga** - Type of load in MWh.
+    * **Tipo de Reserva** - Type of electrical market reserve as defined by CENACE in $/MWh (currency MXN) or MWh.
 * **Promedio** - Group info by hour, day or week.
     * **Horario** - Plot info by hourly average.
     * **Diario** - Plot info by daily average.
@@ -76,12 +97,12 @@ Every time a selection is made, a new graph will be rendered.
 
 * **Resumen de datos horarios:** - Table showing min, max, average and stdev of hourly values.
 * **Primeras 1000 filas de datos:** - Table showing first 1000 rows of hourly info.
-All data can be downloaded via a cvs file with the **Descargar datos** button.
+* All data can be downloaded via a cvs file with the **Descargar datos** button.
 
 ## Future Updates
 This are changes or updates planned to be done some time soon.
 * Add MTR-MDA button to graph the difference between the two.
-* Add analysis for extra info (Cantidades asignadas)
+* Build a database to gather missing MTR info.
 
 I will always be exploring new visualizations, feel free to ask for something to be added or modified!
 
