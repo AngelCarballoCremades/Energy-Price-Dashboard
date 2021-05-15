@@ -47,7 +47,7 @@ def welcome_text():
     return """
         #### ¡Hola!
 
-        Este proyecto está hecho para facilitar el análisis de los **precios de energía eléctrica en México**.
+        Este proyecto está hecho para facilitar el acceso y análisis de la información del **Mercado Eléctrico Mayorista** mexicano.
         
         Básicamente debes: 
         
@@ -77,22 +77,43 @@ def instructions_text():
         ### Barra lateral
 
         Selecciona:
-        * **Precios de Energia** 
-            * **NodosP** y **NodosP Distribuidos** 
-                * Por lo menos uno debe ser seleccionado (de cualquier tipo).
-            * **Fechas** - Rango de fechas de información a solicitar. 
-                * Disponible desde febrero 2017 a mañana. Ten en cuenta que no todos los NodosP han existido en este rango.
-                * MTR disponible hasta hoy -7 días.
-                * MDA hasta hoy +1 día.
+        * **Energía Eléctrica** 
+            * **Precios** - Precio de energía
+                * **NodosP** y **NodosP Distribuidos** 
+                    * Por lo menos uno debe ser seleccionado (de cualquier tipo).
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * Disponible desde febrero 2017 a mañana. Ten en cuenta que no todos los NodosP han existido en este rango.
+                    * MTR disponible hasta hoy -7 días.
+                    * MDA hasta hoy +1 día.
+                * **MDA** y **MTR**
+                    * Por lo menos uno debe ser seleccionado.
+            * **Cantidades Asignadas** - Cantidades asignadas de energía por Zona de Carga en el MDA.
+                * **Zonas de Carga**
+                    * Por lo menos uno debe ser seleccionado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * Disponible desde enero 2017 a mañana.
+                    * MDA hasta hoy +1 día.
+                * **MDA**
+                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
         * **Servicios Conexos**  
-            * **Zonas de Reserva**
-                * Por lo menos una debe ser seleccionada.
-            * **Fechas** - Rango de fechas de información a solicitar. 
-                * Disponible desde mayo 2018 a mañana.
-                * MTR disponible hasta hoy -7 días.
-                * MDA hasta hoy +1 día.
-        * **MDA** y **MTR**
-            * Por lo menos uno debe ser seleccionado.
+            * **Precios** - Precio de Servicios conexos por tipo de reserva.
+                * **Zonas de Reserva**
+                    * Por lo menos una debe ser seleccionada.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * Disponible desde mayo 2018 a mañana.
+                    * MTR disponible hasta hoy -7 días.
+                    * MDA hasta hoy +1 día.
+                * **MDA** y **MTR**
+                    * Por lo menos uno debe ser seleccionado.
+            * **Cantidades Asignadas** - Cantidades asignadas de reservas en el MDA.
+                * **Zonas de Reserva**
+                    * Por lo menos uno debe ser seleccionado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * Disponible desde mayo 2018 a mañana.
+                    * MDA hasta hoy +1 día.
+                * **MDA**
+                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
+            
 
         Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
         El tiempo que tarde dependerá de la información solicitada.
@@ -100,7 +121,7 @@ def instructions_text():
         ### Área Central
 
         Opciones a seleccionar:
-        * **Componente de Precio** o **Tipo de Reserva** - Componente del PML, PND o tipo de reserva a graficar $/MWh (MXN).
+        * **Componente de Precio**, **Tipo de Carga** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga o reserva a graficar $/MWh (MXN).
         * **Promedio**
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple).
@@ -114,9 +135,12 @@ def instructions_text():
         Cada vez que se hace una selección, una gráfica será creada o modificada.
         
         * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
-        * **Primeras 1000 filas de datos:** - Tabla mostrando 100 primeras filas de la información horaria.
+        * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
         
         Puedes descargar toda la información a un cvs con el botón **Descargar datos**.
+
+        Tola da información es decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx) y [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx).
 
 
         """
@@ -163,6 +187,7 @@ def check_df_requested(df_requested):
         caching.clear_cache()
         st.sidebar.warning('Error extrayendo datos del CENACE. Inténtalo de nuevo o cambia las fechas solicitadas.')
         st.stop()
+
 
 def pack_dates(start_date, end_date, market):
     """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
@@ -583,7 +608,6 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
 
     return df
 
-st.cache()
 def arange_dataframe_for_table(df, component, download = False):
     """Modifies original df to show in table."""
     
@@ -632,8 +656,6 @@ def arange_dataframe_for_info_table(df, component, group):
     df = df[['','Mínimo','Máximo','Promedio','Desviación Est.']]
 
     return df
-
-
 
 def plot_df(df, component, avg_option, agg_option, group):
     """Generates plot depending on selected options"""
@@ -864,7 +886,7 @@ def main():
             with col2:
                 mtr = st.checkbox('MTR', value=False)
 
-            print("Checking data...")
+            print("Checking data Energia-Precios...")
 
             # Check selected options        
             check_dates(dates)
@@ -936,7 +958,7 @@ def main():
             end_date = today-timedelta(days=15)
 
             # Nodes multiselect
-            selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
+            selected_nodes_d = st.sidebar.multiselect('Zonas de Carga',nodes_d)
 
             # Date picker
             dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
@@ -946,7 +968,7 @@ def main():
             with col1:
                 mda = st.checkbox('MDA', value=True)
 
-            print("Checking data...")
+            print("Checking data Energia-CantidadesA...")
 
             # Check selected options        
             check_dates(dates)
@@ -1033,7 +1055,7 @@ def main():
             with col2:
                 mtr = st.checkbox('MTR', value=False)     
             
-            print("Checking data...")
+            print("Checking data SCon-Precios...")
 
             # Check selected options
             check_dates(dates)
@@ -1115,7 +1137,7 @@ def main():
             with col1:
                 mda = st.checkbox('MDA', value=True)
 
-            print("Checking data...")
+            print("Checking data SCon-CantidadesA...")
 
             # Check selected options
             check_dates(dates)
@@ -1143,7 +1165,7 @@ def main():
             agg_options = ["Histórico","Día de la semana", "Mes"]
         
             col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-            component = col1.selectbox(label = "Tipo de carga:",options=components, index=0, key=None)
+            component = col1.selectbox(label = "Tipo de Reserva:",options=components, index=0, key=None)
             avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
             agg_option = col3.selectbox("Agrupar por", agg_options, 0)
             col4.write("####") # Vertical space
