@@ -292,7 +292,7 @@ def get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda):
 
     return nodes_urls
 
-def get_zones_urls(start_date, end_date, selected_zones, mda, mtr):
+def get_zones_urls(start_date, end_date, selected_zones, mda, mtr, info_type):
     """Returns zones urls to request"""
 
 
@@ -305,10 +305,10 @@ def get_zones_urls(start_date, end_date, selected_zones, mda, mtr):
 
     # Get urls from packed zones and dates, separated by market
     if mda:
-        zones_urls += get_urls_to_request(zones, dates_packed_mda, 'PSC', 'MDA')
+        zones_urls += get_urls_to_request(zones, dates_packed_mda, info_type, 'MDA')
     
     if mtr:        
-        zones_urls += get_urls_to_request(zones, dates_packed_mtr, 'PSC', 'MTR')
+        zones_urls += get_urls_to_request(zones, dates_packed_mtr, info_type, 'MTR')
 
     # If there are no urls to call
     if not len(zones_urls):
@@ -324,7 +324,8 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
         'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
         'PML':'https://ws01.cenace.gob.mx:8082/SWPML/SIM/',
         'PSC':'https://ws01.cenace.gob.mx:8082/SWPSC/SIM/',
-        'CAEZC':'https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/'
+        'CAEZC':'https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/',
+        'CASC':'https://ws01.cenace.gob.mx:8082/SWCASC/SIM/'
         }
 
     urls_list = []
@@ -434,6 +435,16 @@ def json_to_dataframe(json_file):
         df['Cargas Indirectamente Modeladas [MWh]'] = df['Valores'].apply(lambda x: x['demanda_pml_zonales']).astype("float")
         df['Total de Cargas [MWh]'] = df['Valores'].apply(lambda x: x['total_cargas']).astype("float")
         df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Cargas Directamente Modeladas [MWh]','Cargas Indirectamente Modeladas [MWh]','Total de Cargas [MWh]']]
+        
+        return df
+    
+    if json_file['nombre'] == 'Cant. Asignadas Servicios Conexos':
+        df['Nombre del Nodo'] = df['zona_reserva']
+        df["Reserva de Regulación Secundaria [MWh]"] = df['Valores'].apply(lambda x: x['res_reg']).astype('float')
+        df["Reserva Rodante de 10 Minutos [MWh]"] = df['Valores'].apply(lambda x: x['res_rod_10']).astype('float')
+        df["Reserva No Rodante de 10 Minutos [MWh]"] = df['Valores'].apply(lambda x: x['res_10']).astype('float')
+        df["Reserva Suplementaria [MWh]"] = df['Valores'].apply(lambda x: x['res_sup']).astype('float')
+        df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva de Regulación Secundaria [MWh]','Reserva Rodante de 10 Minutos [MWh]',"Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"]]
         
         return df
     
@@ -1009,7 +1020,7 @@ def main():
             start_date = today-timedelta(days=30)
             end_date = today-timedelta(days=15)
 
-            # Nodes multiselect
+            # Zones multiselect
             selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
 
             # Date picker
@@ -1033,7 +1044,7 @@ def main():
             start_date, end_date = dates # Unpack date range
 
             # Create urls (API calls) to request using selected options
-            zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, mtr)
+            zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, mtr, 'PSC')
 
             print("Requesting...")
             df_requested = get_info(zones_urls) # Request created urls
@@ -1080,6 +1091,89 @@ def main():
 
                 # Download link
                 st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,mtr]), unsafe_allow_html=True)
+        
+        if selected_subdata == "Cantidades Asignadas":
+            
+            # List of nodes for multiselect
+            _, nodes_d = get_nodes_list()
+
+            # Dates for date_input creation and delimitation
+            max_date = date.today()+timedelta(days=1)
+            min_date = datetime(2018, 5, 24)
+            today = date.today()
+            start_date = today-timedelta(days=30)
+            end_date = today-timedelta(days=15)
+
+            # Zones multiselect
+            selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
+
+            # Date picker
+            dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
+
+            # MDA checkbox
+            col1, col2, *_ = st.sidebar.beta_columns(4)
+            with col1:
+                mda = st.checkbox('MDA', value=True)
+
+            print("Checking data...")
+
+            # Check selected options
+            check_dates(dates)
+            check_zones(selected_zones)
+            check_markets(mda, False)
+
+            print("Getting info ready...")
+            start_date, end_date = dates # Unpack date range
+
+            # Create urls (API calls) to request using selected options
+            zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, False, 'CASC')
+
+            print("Requesting...")
+            df_requested = get_info(zones_urls) # Request created urls
+
+            # Check for error in request
+            check_df_requested(df_requested)
+            
+            # Deal with 23 and 25 hour days
+            df_requested_clean = check_for_23_or_25_hours(df_requested)
+
+            # Plotting options
+            components = ['Reserva de Regulación Secundaria [MWh]','Reserva Rodante de 10 Minutos [MWh]',"Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"]
+            avg_options = ["Horario", "Diario", "Semanal"]
+            agg_options = ["Histórico","Día de la semana", "Mes"]
+        
+            col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
+            component = col1.selectbox(label = "Tipo de carga:",options=components, index=0, key=None)
+            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
+            agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+            col4.write("####") # Vertical space
+            group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
+
+            with st.spinner(text='Generando gráfica y tabla.'):
+                
+                print('Plotting...')
+                # Create DataFrame for plot and create plot
+                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+                st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
+
+                print("Making info table...")
+                # Create DataFrame for info table and display info table
+                df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
+                st.markdown("""Resumen de datos horarios:""")
+                st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
+
+                st.markdown("") # Vertical space
+                st.markdown("")
+
+                print("Making table...")
+                # Create dataframe for table and display table
+                df_table = arange_dataframe_for_table(df_requested.copy(), component)
+                st.markdown("""Primeras 1000 filas de datos:""")
+                st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
+                
+                # Download link
+                st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,False]), unsafe_allow_html=True)
+
         
     print('Done')
 
