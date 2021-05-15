@@ -122,10 +122,10 @@ def instructions_text():
 
         Opciones a seleccionar:
         * **Componente de Precio**, **Tipo de Carga** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga o reserva a graficar $/MWh (MXN).
-        * **Promedio**
+        * **Promedio** o **Valor**
             * **Horario** - Graficar promedio por hora (promedio simple).
-            * **Diario** - Graficar promedio por día (promedio simple).
-            * **Semanal** - Graficar promedio por semana (promedio simple).
+            * **Diario** - Graficar promedio por día (promedio simple) o suma del total asignado en el día.
+            * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
         * **Agrupar por**
             * **Histórico** - Grafica la información sin modificación extra.
             * **Día de la semana** - Grafica el promedio de cada hora para cada día de la semana. Utiliza la información solicitada en la barra lateral.
@@ -500,10 +500,10 @@ def check_for_23_or_25_hours(df_requested):
 
     return df
 
-def arange_dataframe_for_plot(df, avg_option, agg_option, group):
+def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
     """Modifies dataframe to plot desired information, changes output depending on average, aggregation and group option"""
     
-    def use_avg_option(df, avg_option, agg_option, group):
+    def use_avg_option(df, avg_option, agg_option, group, mean_or_sum):
         """Modifies dataframe to plot desired avg_option"""
 
         if agg_option == "Día de la semana":
@@ -554,7 +554,11 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
             return df
         
         elif avg_option == "Diario":
-            df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
+            if mean_or_sum == 'mean':
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
+            elif mean_or_sum == 'sum':
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).sum()
+            
             df.reset_index(inplace=True)
             df["Fecha_g"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
@@ -564,7 +568,12 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
         elif avg_option == "Semanal":
             df["Fecha"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             df['Año-Semana'] = df['Fecha'].apply(lambda x: ".".join([str(x.isocalendar()[0]), str(x.isocalendar()[1]) if x.isocalendar()[1] > 9 else f"0{str(x.isocalendar()[1])}" ]))
-            df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Año-Semana']).mean()
+            
+            if mean_or_sum == 'mean':
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Año-Semana']).mean()
+            elif mean_or_sum == 'sum':
+                df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Año-Semana']).sum()
+
             df.reset_index(inplace=True)
             df.sort_values(by=['Año-Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
@@ -601,7 +610,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group):
         
 
     # print(df)
-    df = use_avg_option(df, avg_option, agg_option, group)
+    df = use_avg_option(df, avg_option, agg_option, group, mean_or_sum)
     # print(df)
     df = group_by_year(df, group, avg_option, agg_option)
     # print(df)
@@ -915,8 +924,8 @@ def main():
         
             col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
             component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
+            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
             col4.write("####") # Vertical space
             group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
@@ -924,7 +933,7 @@ def main():
                 
                 print('Plotting...')
                 # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'mean')
                 st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
                 print("Making info table...")
@@ -997,8 +1006,8 @@ def main():
         
             col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
             component = col1.selectbox(label = "Tipo de carga:",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+            avg_option = col2.selectbox("Valor", avg_options, 0, help = "Grafica el valor total (suma) por hora, día o semana. Antes, debes seleccionar 'Agrupar por: Histórico'")
+            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
             col4.write("####") # Vertical space
             group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
@@ -1006,7 +1015,7 @@ def main():
                 
                 print('Plotting...')
                 # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'sum')
                 st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
                 print("Making info table...")
@@ -1084,8 +1093,8 @@ def main():
         
             col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
             component = col1.selectbox(label = "Tipo de Reserva",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
+            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
             col4.write("####") # Vertical space
             group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
@@ -1093,7 +1102,7 @@ def main():
 
                 print('Plotting...')
                 # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'mean')
                 st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
                 print("Making info table...")
@@ -1166,8 +1175,8 @@ def main():
         
             col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
             component = col1.selectbox(label = "Tipo de Reserva:",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples).")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0)
+            avg_option = col2.selectbox("Valor", avg_options, 0, help = "Grafica el valor total (suma) por hora, día o semana. Antes, debes seleccionar 'Agrupar por: Histórico'")
+            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
             col4.write("####") # Vertical space
             group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
@@ -1175,7 +1184,7 @@ def main():
                 
                 print('Plotting...')
                 # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group)
+                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'sum')
                 st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
 
                 print("Making info table...")
