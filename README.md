@@ -83,10 +83,10 @@ Here you can choose:
     * **Componente de Precio** - Energy component to plot in $/MWh (currency MXN).
     * **Tipo de Carga** - Type of load in MWh.
     * **Tipo de Reserva** - Type of electrical market reserve as defined by CENACE in $/MWh (currency MXN) or MWh.
-* **Promedio** - Group info by hour, day or week.
+* **Promedio** or **Valor** - Group info by hour, day or week.
     * **Horario** - Plot info by hourly average.
-    * **Diario** - Plot info by daily average.
-    * **Semanal** - Plot info by weekly average.
+    * **Diario** - Plot info by daily average (Promedio) or daily sum (Valor).
+    * **Semanal** - Plot info by weekly average (Promedio) or daily sum (Valor).
 * **Agrupar por** - Plot hourly info by different graph types.
     * **Histórico** - Shows all info requested, no modification made.
     * **Día de la semana** - Plots average of each hour grouped by every day of the week. Takes into account all information requested.
