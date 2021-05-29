@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit import caching
 import pandas as pd
 from datetime import datetime, date, timedelta
+import requests
 from requests_futures.sessions import FuturesSession
 from concurrent.futures import as_completed
 import plotly.express as px
@@ -34,12 +35,47 @@ months = {
     12:"Diciembre"
     }
 
+analysis_options = {
+    "Energía Eléctrica":{
+        "Precios":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2017, 2, 1),
+            "components":["Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"],
+            "markets":["MDA","MTR"],
+            "mean_or_sum":"mean"
+        },
+        "Cantidades Asignadas":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2017, 1, 1),
+            "components":["Total de Cargas [MWh]","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]"],
+            "markets":["MDA"],
+            "mean_or_sum":"sum"
+        },
+    },
+    "Servicios Conexos":{
+        "Precios":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2018, 5, 24),
+            "components":["Reserva de Regulación Secundaria [$/MWh]","Reserva Rodante de 10 Minutos [$/MWh]","Reserva No Rodante de 10 Minutos [$/MWh]","Reserva Rodante Suplementaria [$/MWh]","Reserva No Rodante Suplementaria [$/MWh]"],
+            "markets":["MDA","MTR"],
+            "mean_or_sum":"mean"
+        },
+        "Cantidades Asignadas":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2018, 5, 24),
+            "components":["Reserva de Regulación Secundaria [MWh]","Reserva Rodante de 10 Minutos [MWh]","Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"],
+            "markets":["MDA"],
+            "mean_or_sum":"sum"
+        },
+    }
+}
+
 reservas = {
-    'Reserva de regulación secundaria':"Reserva de Regulación Secundaria [$/MWh]",
-    'Reserva rodante de 10 minutos':"Reserva Rodante de 10 Minutos [$/MWh]",
-    'Reserva no rodante de 10 minutos':"Reserva No Rodante de 10 Minutos [$/MWh]",
-    'Reserva rodante suplementaria':"Reserva Rodante Suplementaria [$/MWh]",
-    'Reserva no rodante suplementarias':"Reserva No Rodante Suplementaria [$/MWh]"    
+    "Reserva de regulación secundaria":"Reserva de Regulación Secundaria [$/MWh]",
+    "Reserva rodante de 10 minutos":"Reserva Rodante de 10 Minutos [$/MWh]",
+    "Reserva no rodante de 10 minutos":"Reserva No Rodante de 10 Minutos [$/MWh]",
+    "Reserva rodante suplementaria":"Reserva Rodante Suplementaria [$/MWh]",
+    "Reserva no rodante suplementarias":"Reserva No Rodante Suplementaria [$/MWh]"    
 }
 
 
@@ -128,7 +164,7 @@ def instructions_text():
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
         * **Agrupar por**
             * **Histórico** - Grafica la información sin modificación extra.
-            * **Día de la semana** - Grafica el promedio de cada hora para cada día de la semana. Utiliza la información solicitada en la barra lateral.
+            * **Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
             * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
         * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
 
@@ -161,25 +197,22 @@ def check_dates(dates):
     if len(dates)!=2:
         st.stop()
 
-def check_nodes(selected_nodes_p, selected_nodes_d, only_nodes_p=False):
+def check_nodes_zones(selected):
     """Checks if there is at least a node selected"""
-    if selected_nodes_p == selected_nodes_d:
-        if only_nodes_p:
-            st.sidebar.warning('Selecciona un NodoP Distribuido')    
-        else:
-            st.sidebar.warning('Selecciona un NodoP o NodoP Distribuido')
+    if not selected:
+        st.sidebar.warning('Selecciona un Nodo')    
         st.stop()
 
-def check_zones(selected_zones):
-    """Checks if there is at least a Zona de Reserva selected"""
-    if len(selected_zones) == 0:
-        st.sidebar.warning('Selecciona una Zona de Reserva')
-        st.stop()
+# def check_zones(selected_zones):
+#     """Checks if there is at least a Zona de Reserva selected"""
+#     if len(selected_zones) == 0:
+#         st.sidebar.warning('Selecciona una Zona de Reserva')
+#         st.stop()
 
-def check_markets(mda, mtr):
+def check_markets(markets):
     """Checks if there is at least a market selected"""
-    if not any([mda, mtr]):
-        st.sidebar.warning('Selecciona uno o dos mercados')
+    if not any(markets):
+        st.sidebar.warning('Selecciona un mercado.')
         st.stop()
 
 def check_df_requested(df_requested):
@@ -250,7 +283,7 @@ def pack_nodes(nodes, node_type):
 
     return nodos_api
 
-def get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda, mtr):
+def get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda, mtr=False):
     """Returns nodes urls to request"""
 
     dates_packed_mda = pack_dates(start_date, end_date, 'MDA') # Pack dates for API calls
@@ -317,7 +350,7 @@ def get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda):
 
     return nodes_urls
 
-def get_zones_urls(start_date, end_date, selected_zones, mda, mtr, info_type):
+def get_zones_urls(start_date, end_date, selected_zones, info_type, mda, mtr=False):
     """Returns zones urls to request"""
 
 
@@ -396,17 +429,29 @@ def get_info(urls_list):
         resp = future.result() # Url response
         json_data = resp.json() # Get response json
 
-        # checks for response status, expected 'OK' status
-        if "status" in json_data.keys():
-            if json_data["status"] != "OK": # If response != 'OK' don't append response. Usualy happens when there is no data available for nodes/date selected.
-                print(json_data)
-                continue
-        else:
+        # Check for bad responses
+        for _ in range(10):
+
+            if "status" in json_data.keys(): 
+                break # Good response
+
             # When there is an error on CENACE's side (Usually in MTR API) there is a 'message' key in json response. If it's true entire process is cancelled (False is returned).
-            if "Message" in json_data.keys():
-                print(json_data)
-                print(resp.request.url)
-                return False
+            elif "Message" in json_data.keys():
+                    print(json_data)
+                    print(resp.request.url)
+                    print("Requesting again...")
+                    resp = requests.get(resp.request.url)
+                    json_data = resp.json() # Get response json
+                    
+        if "Message" in json_data.keys():
+            print(json_data)
+            print(resp.request.url)
+            return False
+
+        # checks for response status, expected 'OK' status
+        if json_data["status"] != "OK": # If response != 'OK' don't append response. Usualy happens when there is no data available for nodes/date selected.
+            print(json_data)
+            continue
 
         dfs.append(json_to_dataframe(json_data)) # Convert json to DataFrame and append to DataFrames'list
         # print('.')
@@ -500,33 +545,33 @@ def check_for_23_or_25_hours(df_requested):
 
     return df
 
-def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
-    """Modifies dataframe to plot desired information, changes output depending on average, aggregation and group option"""
+def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum):
+    """Modifies dataframe to plot desired information, changes output depending on plot and group option"""
     
-    def use_avg_option(df, avg_option, agg_option, group, mean_or_sum):
-        """Modifies dataframe to plot desired avg_option"""
+    def use_plot_option(df, plot_option, group, mean_or_sum):
+        """Modifies dataframe to plot desired plot_option"""
 
-        if agg_option == "Día de la semana":
+        if plot_option == "Promedio Horario por Día de la Semana":
             df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
             df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
-            df['Día de la semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
+            df['Día de la Semana'] = df['Fecha_g'].apply(lambda x: str(x.isocalendar()[2]))
 
             if group:
                 df["Año"] = df['Fecha_g'].dt.year
                 df["Nodo-Mercado"] = df['Año'].apply(str) + "_" + df['Mercado'] + '_' + df["Nombre del Nodo"]
-                df = df.groupby(['Nodo-Mercado','Día de la semana','Hora_g']).mean()
+                df = df.groupby(['Nodo-Mercado','Día de la Semana','Hora_g']).mean()
             
             else:
                 df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"]
-                df = df.groupby(['Nodo-Mercado','Día de la semana','Hora_g']).mean()                   
+                df = df.groupby(['Nodo-Mercado','Día de la Semana','Hora_g']).mean()                   
 
             df.reset_index(inplace=True)
             df['Segundo'] = df['Hora_g'].apply(lambda x: str(int(x)+1) if int(x)>8 else f"0{int(x)+1}")
-            df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
+            df['Día-Hora'] = pd.to_datetime("2021-03-0" + df['Día de la Semana'] + " " + df['Hora_g'] + ":59:" + df['Segundo'], format="%Y-%m-%d %H:%M:%S")
             df.sort_values(by='Día-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
 
-        elif agg_option == "Mes":
+        elif plot_option == "Promedio Horario por Mes":
             df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
             df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
             df['Mes'] = df['Fecha_g'].dt.month
@@ -546,14 +591,14 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
             df.sort_values(by='Mes-Hora', axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
         
-        elif avg_option == "Horario":
+        elif plot_option == "Horario":
             df['Hora_g'] = df['Hora'].apply(lambda x: f"0{int(x)-1}" if int(x)-1 < 10 else f"{int(x)-1}")
             df["Fecha_g"] = pd.to_datetime(df['Fecha'] + ' ' + df['Hora_g'] + ':59:59', format="%Y-%m-%d %H:%M:%S")
             df["Año"] = df['Fecha_g'].dt.year
             df.sort_values(by='Fecha_g', axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
         
-        elif avg_option == "Diario":
+        elif plot_option == "Diario":
             if mean_or_sum == 'mean':
                 df = df.groupby(['Sistema','Mercado','Nombre del Nodo','Fecha']).mean()
             elif mean_or_sum == 'sum':
@@ -565,7 +610,7 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
             df["Año"] = df['Fecha_g'].dt.year
             return df
 
-        elif avg_option == "Semanal":
+        elif plot_option == "Semanal":
             df["Fecha"] = pd.to_datetime(df['Fecha'], format="%Y-%m-%d")
             df['Año-Semana'] = df['Fecha'].apply(lambda x: ".".join([str(x.isocalendar()[0]), str(x.isocalendar()[1]) if x.isocalendar()[1] > 9 else f"0{str(x.isocalendar()[1])}" ]))
             
@@ -578,9 +623,9 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
             df.sort_values(by=['Año-Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
             return df
 
-    def group_by_year(df,group, avg_option, agg_option):
+    def group_by_year(df,group, plot_option):
         """Modifies dataframe to plot yaer vs year"""
-        if agg_option in ["Día de la semana","Mes"]:
+        if plot_option in ["Promedio Horario por Día de la Semana","Promedio Horario por Mes"]:
             return df
 
         elif not group:
@@ -588,20 +633,20 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
             return df
             
         else:
-            if avg_option == "Horario":
+            if plot_option == "Horario":
                 # df = df[(df['Fecha_g'] > '2013-01-01') & (df['date'] < '2013-02-01')]
                 df['Fecha_g'] = df['Fecha_g'].apply(lambda x: x.replace(year = 2020))
                 # df["Fecha_g"] = df['Fecha_g'].dt.strftime('%m-%d %H:%M:%S')
                 df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
                 return df
                 
-            elif avg_option == "Diario":
+            elif plot_option == "Diario":
                 df['Fecha_g'] = df['Fecha_g'].apply(lambda x: x.replace(year = 2020))
                 # df["Fecha_g"] = df['Fecha_g'].dt.strftime('%m-%d %H:%M:%S')
                 df["Nodo-Mercado"] = df["Año"].apply(str) + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"] 
                 return df
 
-            elif avg_option == "Semanal":
+            elif plot_option == "Semanal":
                 df["Año"] = df['Año-Semana'].apply(lambda x: x[:4])
                 df["Semana"] = df['Año-Semana'].apply(lambda x: x[-2:])
                 df.sort_values(by=['Semana'], axis=0, ascending=True, inplace=True, ignore_index=True)
@@ -610,9 +655,9 @@ def arange_dataframe_for_plot(df, avg_option, agg_option, group, mean_or_sum):
         
 
     # print(df)
-    df = use_avg_option(df, avg_option, agg_option, group, mean_or_sum)
+    df = use_plot_option(df, plot_option, group, mean_or_sum)
     # print(df)
-    df = group_by_year(df, group, avg_option, agg_option)
+    df = group_by_year(df, group, plot_option)
     # print(df)
 
     return df
@@ -666,10 +711,10 @@ def arange_dataframe_for_info_table(df, component, group):
 
     return df
 
-def plot_df(df, component, avg_option, agg_option, group):
+def plot_df(df, component, plot_option, group):
     """Generates plot depending on selected options"""
 
-    if agg_option == "Día de la semana":
+    if plot_option == "Promedio Horario por Día de la Semana":
         fig = px.line(
             data_frame=df, 
             x="Día-Hora", 
@@ -691,7 +736,7 @@ def plot_df(df, component, avg_option, agg_option, group):
         for i in range(1,8):
             fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=week_days[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
 
-    elif agg_option == "Mes":
+    elif plot_option == "Promedio Horario por Mes":
         fig = px.line(
             data_frame=df, 
             x="Mes-Hora", 
@@ -715,7 +760,7 @@ def plot_df(df, component, avg_option, agg_option, group):
             # print(i, months[i], f"2021-03-{i} 00:30 2021-03-{i+1} 00:30")
 
     
-    elif avg_option == 'Semanal':
+    elif plot_option == 'Semanal':
         if group:
             fig = px.line(
                 data_frame=df, 
@@ -805,18 +850,6 @@ def get_table_download_link(df,dates, component, info, markets):
     in:  dataframe
     out: href string
     """
-    # Extra info to show in file name
-    if isinstance(info, int):
-        info = f"{info}_nodos"
-    else:
-        info = ("_").join(info)
-    
-    # Selected markets to show in file name
-    markets_info = []
-    if markets[0]:
-        markets_info.append("MDA")
-    if markets[1]:
-        markets_info.append("MTR")
 
     component_title = ''
     for s in component:
@@ -826,7 +859,7 @@ def get_table_download_link(df,dates, component, info, markets):
             component_title += s
 
     file_name_header = unidecode.unidecode(component_title[:-1]).replace(' ',"_") # Remove special characters ó, í, á, etc from file name
-    file_name = f"{file_name_header}_{info}_{('_').join(markets_info)}_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
+    file_name = f"{file_name_header}_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
     
     csv = df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()
@@ -860,351 +893,120 @@ def main():
     st.write("###") # Vertical space
 
     # Type of info to analyze
-    selected_data = st.sidebar.radio(label='Selecciona la opción deseada:',options=['Energía Eléctrica','Servicios Conexos'], index=0, key=None)
+    selected_data = st.sidebar.radio(label='Selecciona la opción deseada:',options=[*analysis_options], index=0, key=None)
     st.sidebar.write("#")
 
-    # Precios de Energía Selected
-    if selected_data == 'Energía Eléctrica':
+    selected_subdata = st.sidebar.radio(label=f'Información de {selected_data}:',options=[*analysis_options[selected_data]], index=0, key=None)
+    st.sidebar.write("#")
+        
 
-        selected_subdata = st.sidebar.radio(label='Información de Energía Eléctrica:',options=['Precios','Cantidades Asignadas'], index=0, key=None)
-        st.sidebar.write("#")
+    # Dates for date_input creation and delimitation
+    max_date = analysis_options[selected_data][selected_subdata]["max_date"]
+    min_date = analysis_options[selected_data][selected_subdata]["min_date"]
+    today = date.today()
+    start_date = today-timedelta(days=30)
+    end_date = today-timedelta(days=15)
 
+    if selected_data == "Energía Eléctrica":
+
+        # List of nodes for multiselects
+        nodes_p, nodes_d = get_nodes_list()
+        
+        # Nodes multiselect
         if selected_subdata == "Precios":
-            
-            # List of nodes for multiselects
-            nodes_p, nodes_d = get_nodes_list()
-
-            # Dates for date_input creation and delimitation
-            max_date = date.today()+timedelta(days=1)
-            min_date = datetime(2017, 2, 1)
-            today = date.today()
-            start_date = today-timedelta(days=30)
-            end_date = today-timedelta(days=15)
-
-            # Nodes multiselect
             selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
             selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
+            selected = len(selected_nodes_d+selected_nodes_p)>0 # Is there any node selected?
 
-            # Date picker
-            dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
-
-            # MDA and MTR checkboxes
-            col1, col2, *_ = st.sidebar.beta_columns(4)
-            with col1:
-                mda = st.checkbox('MDA', value=False)
-            with col2:
-                mtr = st.checkbox('MTR', value=False)
-
-            print("Checking data Energia-Precios...")
-
-            # Check selected options        
-            check_dates(dates)
-            check_nodes(selected_nodes_p, selected_nodes_d)
-            check_markets(mda, mtr)
-            
-            print("Getting info ready...")
-            start_date, end_date = dates # Unpack date range
-            
-            # Create urls (API calls) to request using selected options
-            nodes_urls = get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda, mtr)
-            
-            print("Requesting...")
-            df_requested = get_info(nodes_urls) # Request created urls
-
-            # Check for error in request
-            check_df_requested(df_requested)
-            
-            # Deal with 23 and 25 hour days
-            df_requested_clean = check_for_23_or_25_hours(df_requested)
-
-            # Plotting options
-            components = ['Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']
-            avg_options = ["Horario", "Diario", "Semanal"]
-            agg_options = ["Histórico","Día de la semana", "Mes"]
-        
-            col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-            component = col1.selectbox(label = "Componente de Precio",options=components, index=0, key=None, help="Componente de PML o PND a graficar.")
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
-            col4.write("####") # Vertical space
-            group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
-
-            with st.spinner(text='Generando gráfica y tabla.'):
-                
-                print('Plotting...')
-                # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'mean')
-                st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
-
-                print("Making info table...")
-                # Create DataFrame for info table and display info table
-                df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-                st.markdown("""Resumen de datos horarios:""")
-                st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
-
-                st.markdown("") # Vertical space
-                st.markdown("")
-
-                print("Making table...")
-                # Create dataframe for table and display table
-                df_table = arange_dataframe_for_table(df_requested.copy(), component)
-                st.markdown("""Primeras 1000 filas de datos:""")
-                st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-                
-                # Download link
-                st.markdown(get_table_download_link(df_table, dates, component, info=len(selected_nodes_d+selected_nodes_p), markets=[mda,mtr]), unsafe_allow_html=True)
-            
-        if selected_subdata == "Cantidades Asignadas":
-            
-            # List of nodes for multiselect
-            _, nodes_d = get_nodes_list()
-
-            # Dates for date_input creation and delimitation
-            max_date = date.today()+timedelta(days=1)
-            min_date = datetime(2017, 1, 1)
-            today = date.today()
-            start_date = today-timedelta(days=30)
-            end_date = today-timedelta(days=15)
-
-            # Nodes multiselect
+        elif selected_subdata == "Cantidades Asignadas":
             selected_nodes_d = st.sidebar.multiselect('Zonas de Carga',nodes_d)
+            selected = len(selected_nodes_d)>0 # Is there any node selected?
 
-            # Date picker
-            dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
-
-            # MDA checkbox
-            col1, col2, *_ = st.sidebar.beta_columns(4)
-            with col1:
-                mda = st.checkbox('MDA', value=True)
-
-            print("Checking data Energia-CantidadesA...")
-
-            # Check selected options        
-            check_dates(dates)
-            check_nodes([], selected_nodes_d, True)
-            check_markets(mda, False)
-            
-            print("Getting info ready...")
-            start_date, end_date = dates # Unpack date range
-            
-            # Create urls (API calls) to request using selected options
-            nodes_urls = get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda)
-
-            print("Requesting...")
-            df_requested = get_info(nodes_urls) # Request created urls
-
-            # Check for error in request
-            check_df_requested(df_requested)
-            
-            # Deal with 23 and 25 hour days
-            df_requested_clean = check_for_23_or_25_hours(df_requested)
-
-            # Plotting options
-            components = ['Total de Cargas [MWh]','Cargas Directamente Modeladas [MWh]','Cargas Indirectamente Modeladas [MWh]']
-            avg_options = ["Horario", "Diario", "Semanal"]
-            agg_options = ["Histórico","Día de la semana", "Mes"]
+    elif selected_data == "Servicios Conexos":
         
-            col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-            component = col1.selectbox(label = "Tipo de carga:",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Valor", avg_options, 0, help = "Grafica el valor total (suma) por hora, día o semana. Antes, debes seleccionar 'Agrupar por: Histórico'")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
-            col4.write("####") # Vertical space
-            group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
-
-            with st.spinner(text='Generando gráfica y tabla.'):
-                
-                print('Plotting...')
-                # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'sum')
-                st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
-
-                print("Making info table...")
-                # Create DataFrame for info table and display info table
-                df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-                st.markdown("""Resumen de datos horarios:""")
-                st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
-
-                st.markdown("") # Vertical space
-                st.markdown("")
-
-                print("Making table...")
-                # Create dataframe for table and display table
-                df_table = arange_dataframe_for_table(df_requested.copy(), component)
-                st.markdown("""Primeras 1000 filas de datos:""")
-                st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-                
-                # Download link
-                st.markdown(get_table_download_link(df_table, dates, component, info=len(selected_nodes_d), markets=[mda,False]), unsafe_allow_html=True)
-
-
-    if selected_data == 'Servicios Conexos':
+        # Zones multiselect
+        selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
+        selected = len(selected_zones)>0 # Is there any zone selected?
         
-        selected_subdata = st.sidebar.radio(label='Información de Servicios Conexos:',options=['Precios','Cantidades Asignadas'], index=0, key=None)
-        st.sidebar.write("#")
+
+    # Date picker
+    dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
+
+    # Markets checkboxes
+    market_options = analysis_options[selected_data][selected_subdata]["markets"]
+    markets = []
+    for market in market_options:
+        markets.append(st.sidebar.checkbox(market, value=False))
+        
+    # Check selected options        
+    check_dates(dates)
+    check_nodes_zones(selected)
+    check_markets(markets)
+    
+    start_date, end_date = dates # Unpack date range
+    mean_or_sum = analysis_options[selected_data][selected_subdata]["mean_or_sum"]
+
+    # Create urls (API calls) to request using selected options    
+    if selected_data == "Energía Eléctrica":
+        
+        if selected_subdata == "Precios":
+            urls = get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, *markets)        
+
+        elif selected_subdata == "Cantidades Asignadas":
+            urls = get_nodes_p_urls(start_date, end_date, selected_nodes_d, *markets)
+
+    elif selected_data == "Servicios Conexos":
 
         if selected_subdata == "Precios":
-            
-            # Dates for date_input creation and delimitation
-            max_date = date.today()+timedelta(days=1)
-            min_date = datetime(2018, 5, 24)
-            today = date.today()
-            start_date = today-timedelta(days=30)
-            end_date = today-timedelta(days=15)
+            urls, zones = get_zones_urls(start_date, end_date, selected_zones, 'PSC', *markets)
 
-            # Zones multiselect
-            selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
+        elif selected_subdata == "Cantidades Asignadas":
+            urls, zones = get_zones_urls(start_date, end_date, selected_zones, 'CASC', *markets)
 
-            # Date picker
-            dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
 
-            # MDA and MTR checkboxes
-            col1, col2, *_ = st.sidebar.beta_columns(4)
-            with col1:
-                mda = st.checkbox('MDA', value=False)
-            with col2:
-                mtr = st.checkbox('MTR', value=False)     
-            
-            print("Checking data SCon-Precios...")
+    print("Requesting...")
+    df_requested = get_info(urls) # Request created urls
 
-            # Check selected options
-            check_dates(dates)
-            check_zones(selected_zones)
-            check_markets(mda, mtr)
+    # Check for error in request
+    check_df_requested(df_requested)
+    
+    # Deal with 23 and 25 hour days
+    df_requested_clean = check_for_23_or_25_hours(df_requested)
 
-            print("Getting info ready...")
-            start_date, end_date = dates # Unpack date range
+    # Plotting options
+    components = analysis_options[selected_data][selected_subdata]["components"]
+    plot_options = ["Horario", "Diario", "Semanal","Promedio Horario por Día de la Semana", "Promedio Horario por Mes"]
+    
+    col1, col2, col3 = st.beta_columns([2,2,1])
+    component = col1.selectbox(label = f"Componente de {selected_subdata}",options=components, index=0, key=None, help="Componente a graficar.")
+    plot_option = col2.selectbox("Valores a graficar:", plot_options, 0, help = "-------------------------------Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
+    col3.write("####") # Vertical space
+    group = col3.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
-            # Create urls (API calls) to request using selected options
-            zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, mtr, 'PSC')
-
-            print("Requesting...")
-            df_requested = get_info(zones_urls) # Request created urls
-
-            # Check for error in request
-            check_df_requested(df_requested)
-            
-            # Deal with 23 and 25 hour days
-            df_requested_clean = check_for_23_or_25_hours(df_requested)
-
-            # Plotting options
-            components = list(reservas.values())
-            avg_options = ["Horario", "Diario", "Semanal"]
-            agg_options = ["Histórico","Día de la semana", "Mes"]
+    with st.spinner(text='Generando gráfica y tabla.'):
         
-            col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-            component = col1.selectbox(label = "Tipo de Reserva",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Promedio", avg_options, 0, help = "Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
-            col4.write("####") # Vertical space
-            group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
+        print('Plotting...')
+        # Create DataFrame for plot and create plot
+        df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), plot_option, group, mean_or_sum = mean_or_sum)
+        st.plotly_chart(plot_df(df_plot, component, plot_option, group), use_container_width=True)#use_column_width=True
 
-            with st.spinner(text='Generando gráfica y tabla.'):
+        print("Making info table...")
+        # Create DataFrame for info table and display info table
+        df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
+        st.markdown("""Resumen de datos horarios:""")
+        st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
 
-                print('Plotting...')
-                # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'mean')
-                st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
+        st.markdown("") # Vertical space
+        st.markdown("")
 
-                print("Making info table...")
-                # Create DataFrame for info table and display info table
-                df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-                st.markdown("""Resumen de datos horarios:""")
-                st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
-
-                st.markdown("") # Vertical space
-                st.markdown("")
-
-                print("Making table...")
-                # Create dataframe for table and display table
-                df_table = arange_dataframe_for_table(df_requested.copy(), component)
-                st.markdown("""Primeras 1000 filas de datos:""")
-                st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-
-                # Download link
-                st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,mtr]), unsafe_allow_html=True)
+        print("Making table...")
+        # Create dataframe for table and display table
+        df_table = arange_dataframe_for_table(df_requested.copy(), component)
+        st.markdown("""Primeras 1000 filas de datos:""")
+        st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
         
-        if selected_subdata == "Cantidades Asignadas":
-            
-            # List of nodes for multiselect
-            _, nodes_d = get_nodes_list()
-
-            # Dates for date_input creation and delimitation
-            max_date = date.today()+timedelta(days=1)
-            min_date = datetime(2018, 5, 24)
-            today = date.today()
-            start_date = today-timedelta(days=30)
-            end_date = today-timedelta(days=15)
-
-            # Zones multiselect
-            selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
-
-            # Date picker
-            dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
-
-            # MDA checkbox
-            col1, col2, *_ = st.sidebar.beta_columns(4)
-            with col1:
-                mda = st.checkbox('MDA', value=True)
-
-            print("Checking data SCon-CantidadesA...")
-
-            # Check selected options
-            check_dates(dates)
-            check_zones(selected_zones)
-            check_markets(mda, False)
-
-            print("Getting info ready...")
-            start_date, end_date = dates # Unpack date range
-
-            # Create urls (API calls) to request using selected options
-            zones_urls, zones = get_zones_urls(start_date, end_date, selected_zones, mda, False, 'CASC')
-
-            print("Requesting...")
-            df_requested = get_info(zones_urls) # Request created urls
-
-            # Check for error in request
-            check_df_requested(df_requested)
-            
-            # Deal with 23 and 25 hour days
-            df_requested_clean = check_for_23_or_25_hours(df_requested)
-
-            # Plotting options
-            components = ['Reserva de Regulación Secundaria [MWh]','Reserva Rodante de 10 Minutos [MWh]',"Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"]
-            avg_options = ["Horario", "Diario", "Semanal"]
-            agg_options = ["Histórico","Día de la semana", "Mes"]
-        
-            col1, col2, col3, col4 = st.beta_columns([2,1,1,1])
-            component = col1.selectbox(label = "Tipo de Reserva:",options=components, index=0, key=None)
-            avg_option = col2.selectbox("Valor", avg_options, 0, help = "Grafica el valor total (suma) por hora, día o semana. Antes, debes seleccionar 'Agrupar por: Histórico'")
-            agg_option = col3.selectbox("Agrupar por", agg_options, 0, help = "Grafica el valor promedio horario por día de la semana o mes (promedios simples).")
-            col4.write("####") # Vertical space
-            group = col4.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
-
-            with st.spinner(text='Generando gráfica y tabla.'):
-                
-                print('Plotting...')
-                # Create DataFrame for plot and create plot
-                df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), avg_option, agg_option, group, mean_or_sum = 'sum')
-                st.plotly_chart(plot_df(df_plot, component, avg_option, agg_option, group), use_container_width=True)#use_column_width=True
-
-                print("Making info table...")
-                # Create DataFrame for info table and display info table
-                df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
-                st.markdown("""Resumen de datos horarios:""")
-                st.dataframe(df_info_table.style.format({col:"{:,}" for col in df_info_table.columns if col not in ['']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=['Mínimo','Máximo','Promedio','Desviación Est.']))
-
-                st.markdown("") # Vertical space
-                st.markdown("")
-
-                print("Making table...")
-                # Create dataframe for table and display table
-                df_table = arange_dataframe_for_table(df_requested.copy(), component)
-                st.markdown("""Primeras 1000 filas de datos:""")
-                st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
-                
-                # Download link
-                st.markdown(get_table_download_link(df_table,dates, component, info=list(zones.keys()), markets=[mda,False]), unsafe_allow_html=True)
-
+        # Download link
+        st.markdown(get_table_download_link(df_table, dates, component, info=1, markets=markets), unsafe_allow_html=True)
         
     print('Done')
 
