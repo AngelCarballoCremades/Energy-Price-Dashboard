@@ -182,7 +182,20 @@ def instructions_text():
                     * Disponible desde enero 2017 a mañana.
                     * MDA hasta hoy +1 día.
                 * **MDA**
-                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
+                    * Debe estar seleccionado.
+            * **Demanda** - Demanda de energía por Zona de Carga.
+                * **Zonas de Carga**
+                    * Por lo menos uno debe ser seleccionado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * MDA disponible desde enero 2018 a mañana.
+                    * MTR disponible desde enero 2018 a hoy-15 días.
+                        * Estoy trabajando en la actualización automática de los datos.
+                    * MDA-AUGC disponible desde el 10 de enero del 2019 a hoy-4 meses.
+                        * Estoy trabajando en la actualización automática de los datos.
+                * **MDA, MDA-AUGC** y **MTR**
+                    * **MDA** - Demanda de energía del modelo AU-MDA, ofertas de compra de energía (Cantidades Asignadas).
+                    * **MDA-AUGC** - Pronóstico de demanda de energía del modelo AU-GC
+                    * **MTR** - Estimación de demanda real de energía
         * **Servicios Conexos**  
             * **Precios** - Precio de Servicios conexos por tipo de reserva.
                 * **Zonas de Reserva**
@@ -200,7 +213,7 @@ def instructions_text():
                     * Disponible desde mayo 2018 a mañana.
                     * MDA hasta hoy +1 día.
                 * **MDA**
-                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
+                    * Debe estar seleccionado.
             
 
         Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
@@ -209,26 +222,25 @@ def instructions_text():
         ### Área Central
 
         Opciones a seleccionar:
-        * **Componente de Precio**, **Tipo de Carga** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga o reserva a graficar $/MWh (MXN).
+        * **Componente de Precio**, **Tipo de Carga**, **Energía** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga, energía o reserva a graficar.
         * **Promedio** o **Valor**
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple) o suma del total asignado en el día.
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
-        * **Agrupar por**
-            * **Histórico** - Grafica la información sin modificación extra.
-            * **Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
-            * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
-        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
-
-        Cada vez que se hace una selección, una gráfica será creada o modificada.
-        
-        * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
-        * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
+            * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
+            * **Promedio Horario por Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
+        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.        
+        * Tablas
+            * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
+            * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
         
         Puedes descargar toda la información a un cvs con el botón **Descargar datos**.
 
-        Toda la información es decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
-        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx) y [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx).
+        Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+        
+        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC) y [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC). 
+        
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros) y [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros).
 
 
         """
@@ -497,7 +509,11 @@ def get_info(urls_list, selected_subdata):
         bar.progress(percentage)
 
         resp = future.result() # Url response
-        json_data = resp.json() # Get response json
+        try:
+            json_data = resp.json() # Get response json
+        except:
+            print(resp.content)
+            raise ValueError(f'Error extraño, respuesta: {resp.content}')
 
         # Check for bad responses
         for _ in range(10):
