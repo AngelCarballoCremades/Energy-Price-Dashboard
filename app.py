@@ -8,7 +8,10 @@ from concurrent.futures import as_completed
 import plotly.express as px
 import base64
 import unidecode
+import os
 
+
+API_URL = os.environ["API_URL"]
 
 week_days = {
     1:"Lunes",
@@ -35,38 +38,87 @@ months = {
     12:"Diciembre"
     }
 
+# configuration dict to modify texts and options
+
 analysis_options = {
     "Energía Eléctrica":{
         "Precios":{
-            "max_date":date.today()+timedelta(days=1),
-            "min_date":datetime(2017, 2, 1),
-            "components":["Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"],
-            "markets":["MDA","MTR"],
-            "mean_or_sum":"mean"
+            "max_date":date.today()+timedelta(days=1), # Max date in date selector
+            "min_date":datetime(2017, 2, 1), # Min date in date selector
+            "markets":["MDA","MTR"], # Markets checkboxes options
+            "mean_or_sum":"mean", # MWh == sum, $/MWh == mean
+            "component":{
+                "options":["Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"], # Component dropdown options
+                "title":"Componente de Precios:", # Component dropdown title
+                "help":"Componente de precios a graficar."  # Component dropdown help
+            },
+            "plot_options":{
+                "title":"Valores a graficar:", # Plot_options dropdown title
+                "help":"Grafica el valor promedio por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes." # Plot_options dropdown help
+            }
         },
         "Cantidades Asignadas":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2017, 1, 1),
-            "components":["Total de Cargas [MWh]","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]"],
             "markets":["MDA"],
-            "mean_or_sum":"sum"
+            "mean_or_sum":"sum",
+            "component":{
+                "options":["Total de Cargas [MWh]","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]"],
+                "title":"Tipo de carga a graficar:",
+                "help":"Cargas directamente modeladas, indirectamente modeladas o ambas (suma)"
+            },
+            "plot_options":{
+                "title":"Valores a graficar:",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            }
         },
+        "Demanda":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2018, 1, 1),
+            "markets":["MDA","MDA-AUGC","MTR"],
+            "mean_or_sum":"sum",
+            "component":{
+                "options":["Energía [MWh]"],
+                "title":"Valor a graficar:",
+                "help":"Energía total"
+            },
+            "plot_options":{
+                "title":"Valores a graficar",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            }
+        }
     },
     "Servicios Conexos":{
         "Precios":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2018, 5, 24),
-            "components":["Reserva de Regulación Secundaria [$/MWh]","Reserva Rodante de 10 Minutos [$/MWh]","Reserva No Rodante de 10 Minutos [$/MWh]","Reserva Rodante Suplementaria [$/MWh]","Reserva No Rodante Suplementaria [$/MWh]"],
             "markets":["MDA","MTR"],
-            "mean_or_sum":"mean"
+            "mean_or_sum":"mean",
+            "component":{
+                "options":["Reserva de Regulación Secundaria [$/MWh]","Reserva Rodante de 10 Minutos [$/MWh]","Reserva No Rodante de 10 Minutos [$/MWh]","Reserva Rodante Suplementaria [$/MWh]","Reserva No Rodante Suplementaria [$/MWh]"],
+                "title":"Tipo de Reserva a graficar:",
+                "help":"Tipo de Reserva a graficar."
+            },
+            "plot_options":{
+                "title":"Valores a graficar:",
+                "help":"Grafica el valor promedio por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            }
         },
         "Cantidades Asignadas":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2018, 5, 24),
-            "components":["Reserva de Regulación Secundaria [MWh]","Reserva Rodante de 10 Minutos [MWh]","Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"],
             "markets":["MDA"],
-            "mean_or_sum":"sum"
-        },
+            "mean_or_sum":"sum",
+            "component":{
+                "options":["Reserva de Regulación Secundaria [MWh]","Reserva Rodante de 10 Minutos [MWh]","Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"],
+                "title":"Tipo de Reserva a graficar:",
+                "help":"Tipo de Reserva a graficar"
+            },
+            "plot_options":{
+                "title":"Valores a graficar:",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            }
+        }
     }
 }
 
@@ -130,7 +182,20 @@ def instructions_text():
                     * Disponible desde enero 2017 a mañana.
                     * MDA hasta hoy +1 día.
                 * **MDA**
-                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
+                    * Debe estar seleccionado.
+            * **Demanda** - Demanda de energía por Zona de Carga.
+                * **Zonas de Carga**
+                    * Por lo menos uno debe ser seleccionado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * MDA disponible desde enero 2018 a mañana.
+                    * MTR disponible desde enero 2018 a hoy-15 días.
+                        * Estoy trabajando en la actualización automática de los datos.
+                    * MDA-AUGC disponible desde el 10 de enero del 2019 a hoy-4 meses.
+                        * Estoy trabajando en la actualización automática de los datos.
+                * **MDA, MDA-AUGC** y **MTR**
+                    * **MDA** - Demanda de energía del modelo AU-MDA, ofertas de compra de energía (Cantidades Asignadas).
+                    * **MDA-AUGC** - Pronóstico de demanda de energía del modelo AU-GC
+                    * **MTR** - Estimación de demanda real de energía
         * **Servicios Conexos**  
             * **Precios** - Precio de Servicios conexos por tipo de reserva.
                 * **Zonas de Reserva**
@@ -148,7 +213,7 @@ def instructions_text():
                     * Disponible desde mayo 2018 a mañana.
                     * MDA hasta hoy +1 día.
                 * **MDA**
-                    * Por ahora sólo está disponible en el MDA (Pronto se podrá seleccionar MTR también).
+                    * Debe estar seleccionado.
             
 
         Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
@@ -157,26 +222,25 @@ def instructions_text():
         ### Área Central
 
         Opciones a seleccionar:
-        * **Componente de Precio**, **Tipo de Carga** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga o reserva a graficar $/MWh (MXN).
+        * **Componente de Precio**, **Tipo de Carga**, **Energía** o **Tipo de Reserva** - Componente del PML, PND, tipo de carga, energía o reserva a graficar.
         * **Promedio** o **Valor**
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple) o suma del total asignado en el día.
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
-        * **Agrupar por**
-            * **Histórico** - Grafica la información sin modificación extra.
-            * **Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
-            * **Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
-        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
-
-        Cada vez que se hace una selección, una gráfica será creada o modificada.
-        
-        * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
-        * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
+            * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
+            * **Promedio Horario por Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
+        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.        
+        * Tablas
+            * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
+            * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
         
         Puedes descargar toda la información a un cvs con el botón **Descargar datos**.
 
-        Toda la información es decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
-        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx) y [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx).
+        Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+        
+        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC) y [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC). 
+        
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros) y [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros).
 
 
         """
@@ -203,12 +267,6 @@ def check_nodes_zones(selected):
         st.sidebar.warning('Selecciona un Nodo')    
         st.stop()
 
-# def check_zones(selected_zones):
-#     """Checks if there is at least a Zona de Reserva selected"""
-#     if len(selected_zones) == 0:
-#         st.sidebar.warning('Selecciona una Zona de Reserva')
-#         st.stop()
-
 def check_markets(markets):
     """Checks if there is at least a market selected"""
     if not any(markets):
@@ -222,8 +280,12 @@ def check_df_requested(df_requested):
         st.stop()
 
 
-def pack_dates(start_date, end_date, market):
+def pack_dates(start_date, end_date, market, limit_dates=True):
     """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
+    
+    # For open source APIs there is no date range limit
+    if not limit_dates:
+        return [[str(start_date),str(end_date)]]
     
     # To avoid CENACE error in MTR API last date of MTR API call is limited
     if market == 'MTR' and end_date > date.today()-timedelta(days = 7):
@@ -323,10 +385,12 @@ def get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, mda
 
     return nodes_d_urls + nodes_p_urls
 
-def get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda):
+def get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda, mda_augc=False, mtr=False, ):
     """Returns nodes urls to request"""
 
     dates_packed_mda = pack_dates(start_date, end_date, 'MDA') # Pack dates for API calls
+    dates_packed_mda_augc = pack_dates(start_date, end_date, 'MDA-AUGC',limit_dates=False) # Pack dates for API calls
+    dates_packed_mtr = pack_dates(start_date, end_date, 'MTR',limit_dates=False) # Pack dates for API calls
     
     nodes_d_system = list(map(get_node_system, selected_nodes_d)) # Get selected-nodes system
     
@@ -342,6 +406,10 @@ def get_nodes_p_urls(start_date, end_date, selected_nodes_d, mda):
     # Get urls from packed nodes and dates, separated by market
     if mda:
         nodes_urls += get_urls_to_request(nodes_d, dates_packed_mda, 'CAEZC', 'MDA')
+    if mda_augc:
+        nodes_urls += get_urls_to_request(nodes_d, dates_packed_mda_augc, 'PDEZC', 'MDA-AUGC')
+    if mtr:
+        nodes_urls += get_urls_to_request(nodes_d, dates_packed_mtr, 'EDREZC', 'MTR')
     
     # If there are no urls to call
     if not len(nodes_urls):
@@ -375,15 +443,29 @@ def get_zones_urls(start_date, end_date, selected_zones, info_type, mda, mtr=Fal
 
     return zones_urls, zones
 
+def check_consumption_dfs(df):
+    """"""
+    # CAEZC does not have a column named Energía, it is named Total de Cargas
+    if "Energía [MWh]" not in df.columns:
+        df["Energía [MWh]"] = df["Total de Cargas [MWh]"]
+        df.drop(columns=["Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]","Total de Cargas [MWh]"], inplace=True)
+        return df
+    
+    else:
+        return df
+
+
 def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
     """Assemble API calls urls for PMLs, PNDs and PSC"""
 
     url_frame = {
-        'PND':'https://ws01.cenace.gob.mx:8082/SWPEND/SIM/',
-        'PML':'https://ws01.cenace.gob.mx:8082/SWPML/SIM/',
-        'PSC':'https://ws01.cenace.gob.mx:8082/SWPSC/SIM/',
-        'CAEZC':'https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/',
-        'CASC':'https://ws01.cenace.gob.mx:8082/SWCASC/SIM/'
+        "PND":"https://ws01.cenace.gob.mx:8082/SWPEND/SIM/",
+        "PML":"https://ws01.cenace.gob.mx:8082/SWPML/SIM/",
+        "PSC":"https://ws01.cenace.gob.mx:8082/SWPSC/SIM/",
+        "CAEZC":"https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/",
+        "CASC":"https://ws01.cenace.gob.mx:8082/SWCASC/SIM/",
+        "EDREZC":f"{API_URL}SWEDREZC/",
+        "PDEZC":f"{API_URL}SWPDEZC/"
         }
 
     urls_list = []
@@ -394,13 +476,13 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
         
         for node_group in nodes_packed:
             for dates in dates_packed:
-                nodes_string = ','.join(node_group)
+                nodes_string = ",".join(node_group)
 
                 # Select correct API base
                 url = url_frame[node_type]
 
                 # Building request url with data provided
-                url_complete = f'{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON'
+                url_complete = f"{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON"
 
                 urls_list.append(url_complete)
 
@@ -408,11 +490,11 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
 
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)#(hash_funcs={streamlit.delta_generator.DeltaGenerator: bar_hash_func})
-def get_info(urls_list):
+def get_info(urls_list, selected_subdata):
     """Makes API calls for every url provided and returns a DataFrame with clean information."""
 
     # Create loading bar in sidebar
-    bar_string = st.sidebar.text('Cargando...')
+    bar_string = st.sidebar.text("Cargando...")
     bar = st.sidebar.progress(0)
 
     # Initialize futures session
@@ -427,7 +509,11 @@ def get_info(urls_list):
         bar.progress(percentage)
 
         resp = future.result() # Url response
-        json_data = resp.json() # Get response json
+        try:
+            json_data = resp.json() # Get response json
+        except:
+            print(resp.content)
+            raise ValueError(f'Error extraño, respuesta: {resp.content}')
 
         # Check for bad responses
         for _ in range(10):
@@ -443,7 +529,7 @@ def get_info(urls_list):
                     resp = requests.get(resp.request.url)
                     json_data = resp.json() # Get response json
                     
-        if "Message" in json_data.keys():
+        if "Message" in json_data.keys() or "message"in json_data.keys():
             print(json_data)
             print(resp.request.url)
             return False
@@ -454,11 +540,13 @@ def get_info(urls_list):
             continue
 
         dfs.append(json_to_dataframe(json_data)) # Convert json to DataFrame and append to DataFrames'list
-        # print('.')
 
     bar.progress(100) # Process is complete
         
     try:
+        if selected_subdata == "Demanda":
+            dfs = map(check_consumption_dfs, dfs)
+
         df = pd.concat(dfs) # Join downloaded info in one DataFrame
     except:
         df = None
@@ -478,61 +566,75 @@ def json_to_dataframe(json_file):
     dfs = []
 
     # Separate every node response and join in one DataFrame
-    for node in json_file['Resultados']:
+    for node in json_file["Resultados"]:
         dfs.append(pd.DataFrame(node))
 
     df = pd.concat(dfs) # Join all DataFrame
-
+    
     # Order all data into one same structure.
-    df['Sistema'] = json_file['sistema']
-    df['Mercado'] = json_file['proceso']
-    df['Fecha'] = df['Valores'].apply(lambda x: x['fecha'])
-    df['Hora'] = df['Valores'].apply(lambda x: x['hora'])
+    df["Sistema"] = json_file["sistema"]
+    df["Mercado"] = json_file["proceso"]
+    df["Fecha"] = df["Valores"].apply(lambda x: x["fecha"])
+    df["Hora"] = df["Valores"].apply(lambda x: x["hora"])
 
-    if json_file['nombre'] == 'PSC':
-        df['Nombre del Nodo'] = df['clv_zona_reserva']
-        df['Reserva'] = df['Valores'].apply(lambda x: x['tipo_res'])
-        df['Precio'] = df['Valores'].apply(lambda x: x['pres']).astype("float")
-        df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva','Precio']]
-        df = df.set_index(['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva']).unstack().reset_index()
-        df.columns = [col[0] if col[1]=='' else reservas[col[1]] for col in df.columns]
+    if json_file["nombre"] == "Pronóstico de Demanda de Energía por Zona de Carga":
+        df["Nombre del Nodo"] = df["zona_carga"]
+        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+        
+        return df
+
+    if json_file["nombre"] == "Estimación de la Demanda Real de Energía por Zona de Carga":
+        df["Nombre del Nodo"] = df["zona_carga"]
+        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+        
+        return df
+
+    if json_file["nombre"] == "PSC":
+        df["Nombre del Nodo"] = df["clv_zona_reserva"]
+        df["Reserva"] = df["Valores"].apply(lambda x: x["tipo_res"])
+        df["Precio"] = df["Valores"].apply(lambda x: x["pres"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Reserva","Precio"]]
+        df = df.set_index(["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Reserva"]).unstack().reset_index()
+        df.columns = [col[0] if col[1]=="" else reservas[col[1]] for col in df.columns]
         
         return df
     
-    if json_file['nombre'] == 'Cantidades Asignadas de Energía de Zona de Carga':
-        df['Nombre del Nodo'] = df['zona_carga']
-        df['Cargas Directamente Modeladas [MWh]'] = df['Valores'].apply(lambda x: x['demanda_mdo_nodales']).astype("float")
-        df['Cargas Indirectamente Modeladas [MWh]'] = df['Valores'].apply(lambda x: x['demanda_pml_zonales']).astype("float")
-        df['Total de Cargas [MWh]'] = df['Valores'].apply(lambda x: x['total_cargas']).astype("float")
-        df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Cargas Directamente Modeladas [MWh]','Cargas Indirectamente Modeladas [MWh]','Total de Cargas [MWh]']]
+    if json_file["nombre"] == "Cantidades Asignadas de Energía de Zona de Carga":
+        df["Nombre del Nodo"] = df["zona_carga"]
+        df["Cargas Directamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_mdo_nodales"]).astype("float")
+        df["Cargas Indirectamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_pml_zonales"]).astype("float")
+        df["Total de Cargas [MWh]"] = df["Valores"].apply(lambda x: x["total_cargas"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]","Total de Cargas [MWh]"]]
         
         return df
     
-    if json_file['nombre'] == 'Cant. Asignadas Servicios Conexos':
-        df['Nombre del Nodo'] = df['zona_reserva']
-        df["Reserva de Regulación Secundaria [MWh]"] = df['Valores'].apply(lambda x: x['res_reg']).astype('float')
-        df["Reserva Rodante de 10 Minutos [MWh]"] = df['Valores'].apply(lambda x: x['res_rod_10']).astype('float')
-        df["Reserva No Rodante de 10 Minutos [MWh]"] = df['Valores'].apply(lambda x: x['res_10']).astype('float')
-        df["Reserva Suplementaria [MWh]"] = df['Valores'].apply(lambda x: x['res_sup']).astype('float')
-        df = df[['Sistema','Mercado','Nombre del Nodo','Fecha','Hora','Reserva de Regulación Secundaria [MWh]','Reserva Rodante de 10 Minutos [MWh]',"Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"]]
+    if json_file["nombre"] == "Cant. Asignadas Servicios Conexos":
+        df["Nombre del Nodo"] = df["zona_reserva"]
+        df["Reserva de Regulación Secundaria [MWh]"] = df["Valores"].apply(lambda x: x["res_reg"]).astype("float")
+        df["Reserva Rodante de 10 Minutos [MWh]"] = df["Valores"].apply(lambda x: x["res_rod_10"]).astype("float")
+        df["Reserva No Rodante de 10 Minutos [MWh]"] = df["Valores"].apply(lambda x: x["res_10"]).astype("float")
+        df["Reserva Suplementaria [MWh]"] = df["Valores"].apply(lambda x: x["res_sup"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Reserva de Regulación Secundaria [MWh]","Reserva Rodante de 10 Minutos [MWh]","Reserva No Rodante de 10 Minutos [MWh]","Reserva Suplementaria [MWh]"]]
         
         return df
     
-    if json_file['nombre'] == 'PEND':
-        df['Precio Total [$/MWh]'] = df['Valores'].apply(lambda x: x['pz']).astype("float")
-        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_ene']).astype("float")
-        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_per']).astype("float")
-        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pz_cng']).astype("float")
-        df['Nombre del Nodo'] = df['zona_carga'].copy()
+    if json_file["nombre"] == "PEND":
+        df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pz"]).astype("float")
+        df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_ene"]).astype("float")
+        df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_per"]).astype("float")
+        df["Componente de Congestión [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_cng"]).astype("float")
+        df["Nombre del Nodo"] = df["zona_carga"].copy()
 
-    if json_file['nombre'] == 'PML':
-        df['Precio Total [$/MWh]'] = df['Valores'].apply(lambda x: x['pml']).astype("float")
-        df['Componente de Energía [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_ene']).astype("float")
-        df['Componente de Pérdidas [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_per']).astype("float")
-        df['Componente de Congestión [$/MWh]'] = df['Valores'].apply(lambda x: x['pml_cng']).astype("float")
-        df['Nombre del Nodo'] = df['clv_nodo'].copy()
+    if json_file["nombre"] == "PML":
+        df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pml"]).astype("float")
+        df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_ene"]).astype("float")
+        df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_per"]).astype("float")
+        df["Componente de Congestión [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_cng"]).astype("float")
+        df["Nombre del Nodo"] = df["clv_nodo"].copy()
 
-    df = df[['Sistema','Mercado','Fecha','Hora','Nombre del Nodo','Precio Total [$/MWh]','Componente de Energía [$/MWh]', 'Componente de Pérdidas [$/MWh]','Componente de Congestión [$/MWh]']]
+    df = df[["Sistema","Mercado","Fecha","Hora","Nombre del Nodo","Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"]]
 
     return df
 
@@ -540,8 +642,6 @@ def json_to_dataframe(json_file):
 def check_for_23_or_25_hours(df_requested):
     """Check for 25 or 23 hour days, works still missing in this function"""
     df = df_requested[df_requested['Hora'] != '25']
-    # index_25 = df_requested[df_requested['Hora'] == '25'].index.to_list()
-    # print(index_25)
 
     return df
 
@@ -654,11 +754,8 @@ def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum):
                 return df
         
 
-    # print(df)
     df = use_plot_option(df, plot_option, group, mean_or_sum)
-    # print(df)
     df = group_by_year(df, group, plot_option)
-    # print(df)
 
     return df
 
@@ -757,8 +854,6 @@ def plot_df(df, component, plot_option, group):
             fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
         for i in range(1,13):
             fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=months[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
-            # print(i, months[i], f"2021-03-{i} 00:30 2021-03-{i+1} 00:30")
-
     
     elif plot_option == 'Semanal':
         if group:
@@ -845,7 +940,7 @@ def plot_df(df, component, plot_option, group):
     return fig
 
 @st.cache()
-def get_table_download_link(df,dates, component, info, markets):
+def get_table_download_link(df,dates, component):
     """Generates a link allowing the data in a given panda dataframe to be downloaded
     in:  dataframe
     out: href string
@@ -918,7 +1013,7 @@ def main():
             selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
             selected = len(selected_nodes_d+selected_nodes_p)>0 # Is there any node selected?
 
-        elif selected_subdata == "Cantidades Asignadas":
+        elif selected_subdata in ["Cantidades Asignadas","Demanda"]:
             selected_nodes_d = st.sidebar.multiselect('Zonas de Carga',nodes_d)
             selected = len(selected_nodes_d)>0 # Is there any node selected?
 
@@ -952,7 +1047,7 @@ def main():
         if selected_subdata == "Precios":
             urls = get_nodes_urls(start_date, end_date, selected_nodes_d, selected_nodes_p, *markets)        
 
-        elif selected_subdata == "Cantidades Asignadas":
+        elif selected_subdata in ["Cantidades Asignadas","Demanda"]:
             urls = get_nodes_p_urls(start_date, end_date, selected_nodes_d, *markets)
 
     elif selected_data == "Servicios Conexos":
@@ -965,7 +1060,7 @@ def main():
 
 
     print("Requesting...")
-    df_requested = get_info(urls) # Request created urls
+    df_requested = get_info(urls, selected_subdata) # Request created urls
 
     # Check for error in request
     check_df_requested(df_requested)
@@ -974,12 +1069,12 @@ def main():
     df_requested_clean = check_for_23_or_25_hours(df_requested)
 
     # Plotting options
-    components = analysis_options[selected_data][selected_subdata]["components"]
+    components = analysis_options[selected_data][selected_subdata]["component"]["options"]
     plot_options = ["Horario", "Diario", "Semanal","Promedio Horario por Día de la Semana", "Promedio Horario por Mes"]
     
     col1, col2, col3 = st.beta_columns([2,2,1])
-    component = col1.selectbox(label = f"Componente de {selected_subdata}",options=components, index=0, key=None, help="Componente a graficar.")
-    plot_option = col2.selectbox("Valores a graficar:", plot_options, 0, help = "-------------------------------Grafica el valor promedio por hora, día o semana (promedios simples). Antes, debes seleccionar 'Agrupar por: Histórico'")
+    component = col1.selectbox(label = analysis_options[selected_data][selected_subdata]["component"]["title"],options=components, index=0, key=None, help=analysis_options[selected_data][selected_subdata]["component"]["help"])
+    plot_option = col2.selectbox(analysis_options[selected_data][selected_subdata]["plot_options"]["title"], plot_options, 0, help = analysis_options[selected_data][selected_subdata]["plot_options"]["help"])
     col3.write("####") # Vertical space
     group = col3.checkbox('Año vs Año', value=False, help = "Separa información por año.")    
 
@@ -1006,7 +1101,7 @@ def main():
         st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
         
         # Download link
-        st.markdown(get_table_download_link(df_table, dates, component, info=1, markets=markets), unsafe_allow_html=True)
+        st.markdown(get_table_download_link(df_table, dates, component), unsafe_allow_html=True)
         
     print('Done')
 
