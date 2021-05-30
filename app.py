@@ -8,10 +8,10 @@ from concurrent.futures import as_completed
 import plotly.express as px
 import base64
 import unidecode
-from decouple import config
+import os
 
 
-API_URL = config('API-URL')
+API_URL = os.environ["API_URL"]
 
 week_days = {
     1:"Lunes",
