@@ -5,7 +5,7 @@ The objective of this project is bringing Mexico's Energy Market  (MEM) informat
 Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [Streamlit share](https://share.streamlit.io/angelcarballocremades/energy-price-dashboard/app.py)
 
 ## Setup & Run to run locally
-1. Install Anacon with python 3.8 or higher (Developed initially in 3.8) (For now Windows only supports streamlit via conda)
+1. Install Anaconda with python 3.8 or higher (Developed initially in 3.8) (For now Windows only supports Streamlit via conda)
 2. Open Anaconda Prompt
 3. conda create --name venv # Create venv
 4. conda activate venv # Activate environment
@@ -13,9 +13,11 @@ Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [S
 6. pip install -r requirements.txt # Install required packages
 7. streamlit run app.py #Run dashboard file locally
 8. Open browser and go to http://localhost:8501/ # Browser should open automatically
+9. For now, non-CENACE APIs need to be disabled
 
 ## Informatios Source
-Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) and [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf), individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx) and [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx).
+Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) and [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+Information gathered via private (for now) [APIs from this repo](https://github.com/AngelCarballoCremades/CENACE-RDS-API) for [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC) and [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC). Individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros) and [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros).
 
 
 ## Dashboard
@@ -35,7 +37,7 @@ Here you can choose:
     * **Precios** - Price of electricity.
         * **NodosP** and **NodosP Distribuidos** 
             * At least one must be selected from any type.
-        * **Fechas** - Range of date of the information to request. 
+        * **Fechas** - Date range of information to request. 
             * From February 2017 to Tomorrow. Keep in mind that some NodosP didn't exist in available date range.
             * MTR is available up to today -7 days.
             * MDA is available up to tomorrow.
@@ -44,16 +46,29 @@ Here you can choose:
     * **Cantidades Asignadas** - Asigned quantities of energy by load zone.
         * **Zona de Carga** 
             * At least one must be selected.
-        * **Fechas** - Range of date of the information to request. 
+        * **Fechas** - Date range of information to request. 
             * From January 2017 to Tomorrow.
             * MDA is available up to tomorrow.
         * **MDA** market
-            * For now, only MDA can be selected (MTR will be added soon).
+            * Must be selected.
+    * **Demanda** - Energy consumption by load zone.
+        * **Zona de Carga** 
+            * At least one must be selected.
+        * **Fechas** - Date range of information to request. 
+            * MDA from January 2018 to Tomorrow.
+            * MTR from January 2018 to Today - 15 days.
+                * I'm working on the automatic update.
+            * MDA-AUGC from January 10th 2019 to Today - 4 months (aprox).
+                * I'm working on the automatic update.
+        * **MDA, MDA-AUGC** and **MTR** markets
+            * **MDA** - Consumption data from AU-MDA model, energy buying offers (Cantidades Asignadas).
+            * **MDA-AUGC** - CENACE's consumption forecast from AU-GC model.
+            * **MTR** - Estimated real consumption.
 * **Servicios Conexos**
     * **Precios** - Price of electrical reserves.
         * **Zonas de Reserva** 
             * At least one must be selected.
-        * **Fechas** - Range of date of the information to request. 
+        * **Fechas** - Date range of information to request. 
             * From May 2018 to Tomorrow.
             * MTR is available up to today -7 days.
             * MDA is available up to tomorrow.
@@ -62,11 +77,11 @@ Here you can choose:
     * **Cantidades Asignadas** - Asigned quantities of reserves by zone.
         * **Zonas de Reserva** 
             * At least one must be selected.
-        * **Fechas** - Range of date of the information to request. 
+        * **Fechas** - Date range of information to request. 
             * From May 2018 to Tomorrow.
             * MDA is available up to tomorrow.
         * **MDA** market
-            * For now, only MDA can be selected (MTR will be added soon).
+            * Must be selected.
     
 Once a valid selection is made, information request to CENACE will begin and a progress bar will apear. Depending on the info size, it may take some seconds or up to minutes to finish.
 
@@ -79,18 +94,17 @@ The central area is where graph and plotting options are.
 </p>
 
 Here you can choose:
-* **Componente de Precio**, **Tipo de Carga** or **Tipo de Reserva** - Energy price component, load type or reserve type to analyze. Depends on selection in sidebar.
+* **Componente de Precio**, **Tipo de Carga**, **Energía** or **Tipo de Reserva** - Energy price component, load type, total energy or reserve type to analyze. Depends on selection in sidebar.
     * **Componente de Precio** - Energy component to plot in $/MWh (currency MXN).
     * **Tipo de Carga** - Type of load in MWh.
+    * **Energía** - Energy in MWh
     * **Tipo de Reserva** - Type of electrical market reserve as defined by CENACE in $/MWh (currency MXN) or MWh.
-* **Promedio** or **Valor** - Group info by hour, day or week.
+* **Valores a graficar:** - Group info by hour, day, week, day of week or month.
     * **Horario** - Plot info by hourly average.
     * **Diario** - Plot info by daily average (Promedio) or daily sum (Valor).
     * **Semanal** - Plot info by weekly average (Promedio) or daily sum (Valor).
-* **Agrupar por** - Plot hourly info by different graph types.
-    * **Histórico** - Shows all info requested, no modification made.
-    * **Día de la semana** - Plots average of each hour grouped by every day of the week. Takes into account all information requested.
-    * **Mes** - Plots average of each hour grouped by month. Takes into account all information requested.
+    * **Promedio Horario por Día de la semana** - Plots average of each hour grouped by every day of the week. Takes into account all information requested.
+    * **Promedio Horario por Mes** - Plots average of each hour grouped by month. Takes into account all information requested.
 * **Año vs Año** - Makes different lines for every year in selected info.
 
 Every time a selection is made, a new graph will be rendered.
@@ -102,7 +116,8 @@ Every time a selection is made, a new graph will be rendered.
 ## Future Updates
 This are changes or updates planned to be done some time soon.
 * Add MTR-MDA button to graph the difference between the two.
-* Build a database to gather missing MTR info.
+* Build a APIs and add info to DB to gather missing info.
+* Add generation by technology info.
 
 I will always be exploring new visualizations, feel free to ask for something to be added or modified!
 
