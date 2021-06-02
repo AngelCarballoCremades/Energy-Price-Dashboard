@@ -551,6 +551,14 @@ def get_info(urls_list, selected_subdata):
     except:
         df = None
     
+    # If there are no values with selected data
+    if isinstance(df,type(None)):
+        bar_string.empty()
+        bar.empty()
+        st.sidebar.warning('No hay valores disponibles para las opciones seleccionadas.')
+        caching.clear_cache()
+        st.stop()
+
     df.reset_index(drop=True, inplace=True)
     
     # Eliminate progress bar
