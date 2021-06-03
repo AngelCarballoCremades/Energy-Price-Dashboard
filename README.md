@@ -102,6 +102,7 @@ The central area is where graph and plotting options are.
 
 <p align="center">
   <img src=./images/central_top.png/>
+  <img src=./images/central_middle.png/>
   <img src=./images/central_down.png/>
 </p>
 
