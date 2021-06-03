@@ -229,6 +229,17 @@ def instructions_text():
                     * **MDA** - Demanda de energía del modelo AU-MDA, ofertas de compra de energía (Cantidades Asignadas).
                     * **MDA-AUGC** - Pronóstico de demanda de energía del modelo AU-GC
                     * **MTR** - Estimación de demanda real de energía
+            * **Generación** - Generación de energía por tipo de tecnología.
+                * **MDA-Intermitentes** y **MTR**
+                    * **MDA-Intermitentes** - Pronóstico de generación de energía intermitente
+                    * **MTR** - Energía generada por tipo de tecnología
+                * **Sistema**
+                    * En MDA-Intermitentes selecciona el deseado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * MDA-Intermitentes disponible desde enero 2018 a mañana.
+                        * Estoy trabajando en la actualización automática de los datos.
+                    * MTR disponible desde enero 2018 a hoy-1 o -2 meses.
+                        * Estoy trabajando en la actualización automática de los datos.
         * **Servicios Conexos**  
             * **Precios** - Precio de Servicios conexos por tipo de reserva.
                 * **Zonas de Reserva**
@@ -262,7 +273,12 @@ def instructions_text():
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
             * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
             * **Promedio Horario por Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
-        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.        
+        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
+        * **Gráficas de Generación de Energía**
+            * **Gráfico de área** - Misma funcionalidad que la gráfica anterior en temas de selección de datos a agrupar.
+                * **Porcentaje** - Grafica el porcentaje de generación por tecnología con base en el 100% generado (normaliza información de 0 a 1 por hora, día o semana).
+            * **Gráfico de dona** - Porcentaje de energía por tipo de energía del rango de fechas solicitado
+                * **Total de Energía** - Total (suma) de energía generada en el rango de fechas solicitado.
         * Tablas
             * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
             * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
@@ -271,9 +287,9 @@ def instructions_text():
 
         Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
         
-        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC) y [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC). 
+        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
         
-        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros) y [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros).
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) y [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
 
         """
