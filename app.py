@@ -13,6 +13,7 @@ import os
 
 API_URL = os.environ["API_URL"]
 
+
 week_days = {
     1:"Lunes",
     2:"Martes",
@@ -45,6 +46,8 @@ analysis_options = {
         "Precios":{
             "max_date":date.today()+timedelta(days=1), # Max date in date selector
             "min_date":datetime(2017, 2, 1), # Min date in date selector
+            "start_date":date.today()-timedelta(days=30), # Initial date selected
+            "end_date":date.today()-timedelta(days=15), # final date initially selected
             "markets":["MDA","MTR"], # Markets checkboxes options
             "mean_or_sum":"mean", # MWh == sum, $/MWh == mean
             "component":{
@@ -60,6 +63,8 @@ analysis_options = {
         "Cantidades Asignadas":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2017, 1, 1),
+            "start_date":date.today()-timedelta(days=30), # Initial date selected
+            "end_date":date.today()-timedelta(days=15), # final date initially selected
             "markets":["MDA"],
             "mean_or_sum":"sum",
             "component":{
@@ -75,6 +80,8 @@ analysis_options = {
         "Demanda":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2018, 1, 1),
+            "start_date":date.today()-timedelta(days=180), # Initial date selected
+            "end_date":date.today()-timedelta(days=165), # final date initially selected
             "markets":["MDA","MDA-AUGC","MTR"],
             "mean_or_sum":"sum",
             "component":{
@@ -86,12 +93,36 @@ analysis_options = {
                 "title":"Valores a graficar",
                 "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
             }
+        },
+        "Generación":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2018, 1, 1),
+            "start_date":date.today()-timedelta(days=180), # Initial date selected
+            "end_date":date.today()-timedelta(days=165), # final date initially selected
+            "markets":["MDA-Intermitentes","MTR"],
+            "mean_or_sum":"sum",
+            "component":{
+                "options":["Energía [MWh]"],
+                "title":"Valor a graficar:",
+                "help":"Generación de energía por tipo de tecnología"
+            },
+            "plot_options":{
+                "title":"Valores a graficar",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            },
+            "second_plot_options":{
+                "title":"Valores a graficar:",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes.",
+                "options":["Horario","Diario", "Semanal","Promedio Horario por Día de la Semana", "Promedio Horario por Mes"]
+            }
         }
     },
     "Servicios Conexos":{
         "Precios":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2018, 5, 24),
+            "start_date":date.today()-timedelta(days=30), # Initial date selected
+            "end_date":date.today()-timedelta(days=15), # final date initially selected
             "markets":["MDA","MTR"],
             "mean_or_sum":"mean",
             "component":{
@@ -107,6 +138,8 @@ analysis_options = {
         "Cantidades Asignadas":{
             "max_date":date.today()+timedelta(days=1),
             "min_date":datetime(2018, 5, 24),
+            "start_date":date.today()-timedelta(days=30), # Initial date selected
+            "end_date":date.today()-timedelta(days=15), # final date initially selected
             "markets":["MDA"],
             "mean_or_sum":"sum",
             "component":{
@@ -196,6 +229,17 @@ def instructions_text():
                     * **MDA** - Demanda de energía del modelo AU-MDA, ofertas de compra de energía (Cantidades Asignadas).
                     * **MDA-AUGC** - Pronóstico de demanda de energía del modelo AU-GC
                     * **MTR** - Estimación de demanda real de energía
+            * **Generación** - Generación de energía por tipo de tecnología.
+                * **MDA-Intermitentes** y **MTR**
+                    * **MDA-Intermitentes** - Pronóstico de generación de energía intermitente
+                    * **MTR** - Energía generada por tipo de tecnología
+                * **Sistema**
+                    * En MDA-Intermitentes selecciona el deseado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * MDA-Intermitentes disponible desde enero 2018 a mañana.
+                        * Estoy trabajando en la actualización automática de los datos.
+                    * MTR disponible desde enero 2018 a hoy-1 o -2 meses.
+                        * Estoy trabajando en la actualización automática de los datos.
         * **Servicios Conexos**  
             * **Precios** - Precio de Servicios conexos por tipo de reserva.
                 * **Zonas de Reserva**
@@ -229,7 +273,12 @@ def instructions_text():
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
             * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
             * **Promedio Horario por Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
-        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.        
+        * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
+        * **Gráficas de Generación de Energía**
+            * **Gráfico de área** - Misma funcionalidad que la gráfica anterior en temas de selección de datos a agrupar.
+                * **Porcentaje** - Grafica el porcentaje de generación por tecnología con base en el 100% generado (normaliza información de 0 a 1 por hora, día o semana).
+            * **Gráfico de dona** - Porcentaje de energía por tipo de energía del rango de fechas solicitado
+                * **Total de Energía** - Total (suma) de energía generada en el rango de fechas solicitado.
         * Tablas
             * **Resumen de datos horarios:** - Tabla mostrando valores estadísticos de los valores horarios.
             * **Primeras 1000 filas de datos:** - Tabla mostrando 1000 primeras filas de la información horaria.
@@ -238,9 +287,9 @@ def instructions_text():
 
         Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
         
-        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC) y [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC). 
+        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
         
-        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros) y [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros).
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) y [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
 
         """
@@ -280,13 +329,12 @@ def check_df_requested(df_requested):
         st.stop()
 
 
-def pack_dates(start_date, end_date, market, limit_dates=True):
+def pack_dates(start_date, end_date, market = "", limit_dates=True):
     """Gets days to ask for info and start date, returns appropiate data intervals to assemble APIs url"""
     
-    # For open source APIs there is no date range limit
-    if not limit_dates:
-        return [[str(start_date),str(end_date)]]
-    
+    # For open source APIs date interval for resquest is bigger
+    date_interval = 200 if not limit_dates else 7
+        
     # To avoid CENACE error in MTR API last date of MTR API call is limited
     if market == 'MTR' and end_date > date.today()-timedelta(days = 7):
         end_date = date.today()-timedelta(days = 7)
@@ -295,14 +343,14 @@ def pack_dates(start_date, end_date, market, limit_dates=True):
     delta = end_date-start_date
     days = delta.days
 
-    # Pack dates every 7 days.
+    # Pack dates every 'date_interval' days.
     while days >= 0:
 
-        if days >= 7:
-            last_date = start_date + timedelta(days = 6)
+        if days >= date_interval:
+            last_date = start_date + timedelta(days = date_interval-1)
             dates.append( [str(start_date),str(last_date)] )
             start_date = last_date + timedelta(days = 1)
-            days -= 7
+            days -= date_interval
 
         else:
             last_date = end_date
@@ -443,6 +491,26 @@ def get_zones_urls(start_date, end_date, selected_zones, info_type, mda, mtr=Fal
 
     return zones_urls, zones
 
+
+def get_generation_urls(start_date, end_date, generation_type, system="SEN"):
+    """Returns generation urls to request"""
+    
+    dates_packed = pack_dates(start_date, end_date, market=None,limit_dates=False)
+
+    # Get urls from desired information
+    if generation_type == "MDA-Intermitentes":
+        urls = get_urls_to_request(False, dates_packed, "PGI", "MDA", system)
+    elif generation_type == "MTR":
+        urls = get_urls_to_request(False, dates_packed, "EGTT", "MTR", system)
+
+    # If there are no urls to call
+    if not len(urls):
+        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+        st.stop()
+
+    return urls
+
+
 def check_consumption_dfs(df):
     """"""
     # CAEZC does not have a column named Energía, it is named Total de Cargas
@@ -455,7 +523,7 @@ def check_consumption_dfs(df):
         return df
 
 
-def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
+def get_urls_to_request(nodes_dict, dates_packed, info_type, market, system = None):
     """Assemble API calls urls for PMLs, PNDs and PSC"""
 
     url_frame = {
@@ -465,10 +533,23 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
         "CAEZC":"https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/",
         "CASC":"https://ws01.cenace.gob.mx:8082/SWCASC/SIM/",
         "EDREZC":f"{API_URL}SWEDREZC/",
-        "PDEZC":f"{API_URL}SWPDEZC/"
+        "PDEZC":f"{API_URL}SWPDEZC/",
+        "EGTT":f"{API_URL}SWEGTT/",
+        "PGI":f"{API_URL}SWPGI/"
         }
 
     urls_list = []
+
+    if not nodes_dict:
+        for dates in dates_packed:
+            # Select correct API base
+            url = url_frame[info_type]
+
+            # Building request url with data provided
+            url_complete = f"{url}{system}/{market}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON"
+            urls_list.append(url_complete)
+        
+        return urls_list
     
     for system, nodes_packed in nodes_dict.items():
         if not len(nodes_packed[0]): 
@@ -479,7 +560,7 @@ def get_urls_to_request(nodes_dict, dates_packed, node_type, market):
                 nodes_string = ",".join(node_group)
 
                 # Select correct API base
-                url = url_frame[node_type]
+                url = url_frame[info_type]
 
                 # Building request url with data provided
                 url_complete = f"{url}{system}/{market}/{nodes_string}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON"
@@ -585,21 +666,28 @@ def json_to_dataframe(json_file):
     df["Fecha"] = df["Valores"].apply(lambda x: x["fecha"])
     df["Hora"] = df["Valores"].apply(lambda x: x["hora"])
 
-    if json_file["nombre"] == "Pronóstico de Demanda de Energía por Zona de Carga":
+    if json_file["nombre"] in ["Energía Generada por Tipo de Tecnología","Pronóstico de Generación Intermitente"]:
+        df["Nombre del Nodo"] = df["tecnologia"]
+        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+
+        return df
+
+    elif json_file["nombre"] == "Pronóstico de Demanda de Energía por Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
         df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
         df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
         
         return df
 
-    if json_file["nombre"] == "Estimación de la Demanda Real de Energía por Zona de Carga":
+    elif json_file["nombre"] == "Estimación de la Demanda Real de Energía por Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
         df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
         df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
         
         return df
 
-    if json_file["nombre"] == "PSC":
+    elif json_file["nombre"] == "PSC":
         df["Nombre del Nodo"] = df["clv_zona_reserva"]
         df["Reserva"] = df["Valores"].apply(lambda x: x["tipo_res"])
         df["Precio"] = df["Valores"].apply(lambda x: x["pres"]).astype("float")
@@ -609,7 +697,7 @@ def json_to_dataframe(json_file):
         
         return df
     
-    if json_file["nombre"] == "Cantidades Asignadas de Energía de Zona de Carga":
+    elif json_file["nombre"] == "Cantidades Asignadas de Energía de Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
         df["Cargas Directamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_mdo_nodales"]).astype("float")
         df["Cargas Indirectamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_pml_zonales"]).astype("float")
@@ -618,7 +706,7 @@ def json_to_dataframe(json_file):
         
         return df
     
-    if json_file["nombre"] == "Cant. Asignadas Servicios Conexos":
+    elif json_file["nombre"] == "Cant. Asignadas Servicios Conexos":
         df["Nombre del Nodo"] = df["zona_reserva"]
         df["Reserva de Regulación Secundaria [MWh]"] = df["Valores"].apply(lambda x: x["res_reg"]).astype("float")
         df["Reserva Rodante de 10 Minutos [MWh]"] = df["Valores"].apply(lambda x: x["res_rod_10"]).astype("float")
@@ -628,14 +716,14 @@ def json_to_dataframe(json_file):
         
         return df
     
-    if json_file["nombre"] == "PEND":
+    elif json_file["nombre"] == "PEND":
         df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pz"]).astype("float")
         df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_ene"]).astype("float")
         df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_per"]).astype("float")
         df["Componente de Congestión [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_cng"]).astype("float")
         df["Nombre del Nodo"] = df["zona_carga"].copy()
 
-    if json_file["nombre"] == "PML":
+    elif json_file["nombre"] == "PML":
         df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pml"]).astype("float")
         df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_ene"]).astype("float")
         df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_per"]).astype("float")
@@ -653,7 +741,8 @@ def check_for_23_or_25_hours(df_requested):
 
     return df
 
-def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum):
+
+def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum, percentage=False):
     """Modifies dataframe to plot desired information, changes output depending on plot and group option"""
     
     def use_plot_option(df, plot_option, group, mean_or_sum):
@@ -761,12 +850,49 @@ def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum):
                 df["Nodo-Mercado"] = df["Año"] + "_" + df['Mercado'] + "_" + df["Nombre del Nodo"]
                 return df
         
+    def use_percentage(df, percentage):
+        
+        if not percentage:
+            return df
+
+        cols = df.columns
+
+        # Hourly graph
+        if "Fecha_g" in cols and "Hora_g" in cols:
+            df.set_index("Fecha_g", inplace=True)
+            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+        
+        # Daily graph
+        elif "Fecha_g" in cols:
+            df.set_index("Fecha_g", inplace=True)
+            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('D')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+        
+        # Weekly graph
+        elif "Año-Semana" in cols:            
+            df["Energía [%]"] = df[["Año-Semana","Energía [MWh]"]].groupby("Año-Semana").transform(lambda x: x / x.sum()).multiply(100).round(3)
+            df.set_index("Año-Semana", inplace=True)
+
+        # Day-of-week graph
+        elif "Día-Hora" in cols:
+            df.set_index("Día-Hora", inplace=True)
+            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+
+        # Month graph
+        elif "Mes-Hora" in cols:
+            df.set_index("Mes-Hora", inplace=True)
+            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+        
+        df.reset_index(inplace=True)
+
+        return df
 
     df = use_plot_option(df, plot_option, group, mean_or_sum)
     df = group_by_year(df, group, plot_option)
-
+    df = use_percentage(df, percentage)
     return df
 
+
+@st.cache(show_spinner=False)
 def arange_dataframe_for_table(df, component, download = False):
     """Modifies original df to show in table."""
     
@@ -779,6 +905,8 @@ def arange_dataframe_for_table(df, component, download = False):
 
     return df_table
 
+
+@st.cache(show_spinner=False)
 def arange_dataframe_for_info_table(df, component, group):
     """Obtains statistical measurements from original dataframe."""
 
@@ -816,6 +944,8 @@ def arange_dataframe_for_info_table(df, component, group):
 
     return df
 
+
+@st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
 def plot_df(df, component, plot_option, group):
     """Generates plot depending on selected options"""
 
@@ -947,6 +1077,124 @@ def plot_df(df, component, plot_option, group):
 
     return fig
 
+
+@st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
+def plot_generation(df, plot_option, component):
+    """Generates area plot depending on selected options"""
+
+    if plot_option == "Promedio Horario por Día de la Semana":
+        fig = px.area(
+            data_frame=df, 
+            x="Día-Hora", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Día-Hora', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Día-Hora": ""
+                }
+            )
+        fig.update_layout(
+            xaxis_tickformat = '%a (%S)')
+        
+        # Add vertical lines and day-of-week names
+        for i in range(1,7): 
+            fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
+        for i in range(1,8):
+            fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=week_days[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+
+    elif plot_option == "Promedio Horario por Mes":
+        fig = px.area(
+            data_frame=df, 
+            x="Mes-Hora", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Mes-Hora', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Mes-Hora": ""
+                }
+            )
+        fig.update_layout(
+            xaxis_tickformat = '%d (%S)')
+
+        # Add vertical lines and month names
+        for i in range(1,12): 
+            fig.add_vline(x=datetime(year=2021, month=3, day=i+1, hour=0, minute=30), line_width=1)
+        for i in range(1,13):
+            fig.add_vrect(x0=f"2021-03-{i+1} 00:30", x1=f"2021-03-{i+1} 00:30", annotation_text=months[i], annotation_position="bottom right", fillcolor="green", opacity=0, line_width=0)
+    
+    elif plot_option == 'Semanal':
+    
+        fig = px.area(
+            data_frame=df, 
+            x="Año-Semana", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Año-Semana', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Año-Semana": ""
+                }
+            )      
+
+    else:
+        fig = px.area(
+            data_frame=df, 
+            x="Fecha_g", 
+            y=component, 
+            color='Nodo-Mercado',
+            hover_data=['Fecha', "Nodo-Mercado", component],
+            width=900, 
+            height=600,
+            labels={
+                "Fecha_g": ""
+                }
+            )
+
+    # Position legend and remove it's title
+    fig.update_layout(
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor = 'rgba(255,255,255,0.6)',
+            title_text=''
+        ),
+        hovermode="x"
+    )
+    fig.update_traces(
+        mode="lines",#"markers+lines",
+        hovertemplate=None
+        )
+    fig.update_xaxes(
+        rangeslider_visible=True,
+        rangeslider_thickness = 0.09
+        )
+    fig.update_yaxes(
+        fixedrange=False
+    )
+
+    return fig
+
+@st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
+def plot_generation_pie(df, component = "Energía [MWh]"):
+    """Plot generation gonut plot with total energy in the middle"""
+
+    total_energy = f"""Total de Energía:<br>{round(df["Energía [MWh]"].sum()/1000000,2)} TWh"""
+
+    fig = px.pie(df, values=component, names="Nodo-Mercado", hole=0.8)
+
+    # Add annotations in the center of the donut
+    fig.update_layout(
+    annotations=[dict(text=total_energy, x=0.5, y=0.5, font_size=20, showarrow=False)])
+    
+    return fig
+
 @st.cache()
 def get_table_download_link(df,dates, component):
     """Generates a link allowing the data in a given panda dataframe to be downloaded
@@ -1006,9 +1254,11 @@ def main():
     # Dates for date_input creation and delimitation
     max_date = analysis_options[selected_data][selected_subdata]["max_date"]
     min_date = analysis_options[selected_data][selected_subdata]["min_date"]
-    today = date.today()
-    start_date = today-timedelta(days=30)
-    end_date = today-timedelta(days=15)
+    start_date = analysis_options[selected_data][selected_subdata]["start_date"]
+    end_date = analysis_options[selected_data][selected_subdata]["end_date"]
+
+    # Markets checkboxes options
+    market_options = analysis_options[selected_data][selected_subdata]["markets"]
 
     if selected_data == "Energía Eléctrica":
 
@@ -1025,6 +1275,17 @@ def main():
             selected_nodes_d = st.sidebar.multiselect('Zonas de Carga',nodes_d)
             selected = len(selected_nodes_d)>0 # Is there any node selected?
 
+        elif selected_subdata == "Generación":
+            # Generation info selector, only allowed one
+            generation_type = st.sidebar.radio(label="Tipo de información:", options=market_options)
+            selected = True
+
+            # MDa can be selected by systems, only one can be selected
+            if generation_type == "MDA-Intermitentes":
+                system = st.sidebar.selectbox('Sistema',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])[1:4]
+            else:
+                system = "SEN"
+
     elif selected_data == "Servicios Conexos":
         
         # Zones multiselect
@@ -1034,17 +1295,18 @@ def main():
 
     # Date picker
     dates = st.sidebar.date_input('Fechas', max_value=max_date, min_value=min_date, value=(start_date, end_date))
+    
+    # For multiple market selections
+    if selected_subdata not in ["Generación"]:
+        markets = []
+        for market in market_options:
+            markets.append(st.sidebar.checkbox(market, value=False))
 
-    # Markets checkboxes
-    market_options = analysis_options[selected_data][selected_subdata]["markets"]
-    markets = []
-    for market in market_options:
-        markets.append(st.sidebar.checkbox(market, value=False))
-        
+        check_markets(markets)
+
     # Check selected options        
     check_dates(dates)
     check_nodes_zones(selected)
-    check_markets(markets)
     
     start_date, end_date = dates # Unpack date range
     mean_or_sum = analysis_options[selected_data][selected_subdata]["mean_or_sum"]
@@ -1057,6 +1319,9 @@ def main():
 
         elif selected_subdata in ["Cantidades Asignadas","Demanda"]:
             urls = get_nodes_p_urls(start_date, end_date, selected_nodes_d, *markets)
+
+        elif selected_subdata == "Generación":
+            urls = get_generation_urls(start_date, end_date, generation_type, system)
 
     elif selected_data == "Servicios Conexos":
 
@@ -1093,7 +1358,27 @@ def main():
         df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), plot_option, group, mean_or_sum = mean_or_sum)
         st.plotly_chart(plot_df(df_plot, component, plot_option, group), use_container_width=True)#use_column_width=True
 
-        print("Making info table...")
+        # Extra plots for generation info
+        if selected_subdata == "Generación":
+            
+            # Aggregation of information and percentage selector
+            col1, col2 = st.beta_columns([5,2])
+            
+            second_plot_option = col1.selectbox(analysis_options[selected_data][selected_subdata]["second_plot_options"]["title"], analysis_options[selected_data][selected_subdata]["second_plot_options"]["options"], 1, help = analysis_options[selected_data][selected_subdata]["second_plot_options"]["help"])
+            col2.write("####") # Vertical space
+            percentage = col2.checkbox('Porcentajes', value=False, help = "Analiza el porcentaje del total generado.")
+
+            # In case percentage is selected, change column units to '%'
+            second_plot_component = "Energía [%]" if percentage else "Energía [MWh]"
+
+            # Plotting generation graph
+            df_generation_plot = arange_dataframe_for_plot(df_requested_clean.copy(), second_plot_option, group=False, mean_or_sum = mean_or_sum, percentage = percentage)
+            st.plotly_chart(plot_generation(df_generation_plot, second_plot_option, second_plot_component), use_container_width=True)
+            
+            # Plotting donut graph
+            df_generation_plot = arange_dataframe_for_plot(df_requested_clean.copy(), plot_option="Diario", group=False, mean_or_sum = mean_or_sum)
+            st.plotly_chart(plot_generation_pie(df_generation_plot), use_container_width=True)
+
         # Create DataFrame for info table and display info table
         df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
         st.markdown("""Resumen de datos horarios:""")
@@ -1102,7 +1387,6 @@ def main():
         st.markdown("") # Vertical space
         st.markdown("")
 
-        print("Making table...")
         # Create dataframe for table and display table
         df_table = arange_dataframe_for_table(df_requested.copy(), component)
         st.markdown("""Primeras 1000 filas de datos:""")
