@@ -99,7 +99,7 @@ analysis_options = {
             "min_date":datetime(2018, 1, 1),
             "start_date":date.today()-timedelta(days=180), # Initial date selected
             "end_date":date.today()-timedelta(days=165), # final date initially selected
-            "markets":["MDA-Intermitentes","MTR"],
+            "markets":["MDA-Intermitentes","MTR-SEN"],
             "mean_or_sum":"sum",
             "component":{
                 "options":["Generación de Energía [MWh]"],
@@ -500,7 +500,7 @@ def get_generation_urls(start_date, end_date, generation_type, system="SEN"):
     # Get urls from desired information
     if generation_type == "MDA-Intermitentes":
         urls = get_urls_to_request(False, dates_packed, "PGI", "MDA", system)
-    elif generation_type == "MTR":
+    elif generation_type == "MTR-SEN":
         urls = get_urls_to_request(False, dates_packed, "EGTT", "MTR", system)
 
     # If there are no urls to call
@@ -1197,7 +1197,7 @@ def plot_generation(df, plot_option, component, start_date, end_date):
 def plot_generation_pie(df, start_date, end_date, component = "Generación de Energía [MWh]"):
     """Plot generation gonut plot with total energy in the middle"""
 
-    total_energy = f"""Total de Energía:<br>{round(df["Generación de Energía [MWh]"].sum()/1000000,2)} TWh"""
+    total_energy = f"""Energía generada:<br>{round(df["Generación de Energía [MWh]"].sum()/1000000,2)} TWh"""
     tech_len = len(df["Nodo-Mercado"].unique().tolist())
     title_extra_string = "" if tech_len > 2 else "Pronóstico de "
 
