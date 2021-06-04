@@ -51,7 +51,7 @@ analysis_options = {
             "markets":["MDA","MTR"], # Markets checkboxes options
             "mean_or_sum":"mean", # MWh == sum, $/MWh == mean
             "component":{
-                "options":["Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"], # Component dropdown options
+                "options":["Precio de Energía [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"], # Component dropdown options
                 "title":"Componente de Precios:", # Component dropdown title
                 "help":"Componente de precios a graficar."  # Component dropdown help
             },
@@ -68,7 +68,7 @@ analysis_options = {
             "markets":["MDA"],
             "mean_or_sum":"sum",
             "component":{
-                "options":["Total de Cargas [MWh]","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]"],
+                "options":["Energía Total Asignada [MWh]","Energía Asignada a Cargas Directamente Modeladas [MWh]","Energía Asignada a Cargas Indirectamente Modeladas [MWh]"],
                 "title":"Tipo de carga a graficar:",
                 "help":"Cargas directamente modeladas, indirectamente modeladas o ambas (suma)"
             },
@@ -85,7 +85,7 @@ analysis_options = {
             "markets":["MDA","MDA-AUGC","MTR"],
             "mean_or_sum":"sum",
             "component":{
-                "options":["Energía [MWh]"],
+                "options":["Demanda de Energía [MWh]"],
                 "title":"Valor a graficar:",
                 "help":"Energía total"
             },
@@ -102,7 +102,7 @@ analysis_options = {
             "markets":["MDA-Intermitentes","MTR"],
             "mean_or_sum":"sum",
             "component":{
-                "options":["Energía [MWh]"],
+                "options":["Generación de Energía [MWh]"],
                 "title":"Valor a graficar:",
                 "help":"Generación de energía por tipo de tecnología"
             },
@@ -514,9 +514,9 @@ def get_generation_urls(start_date, end_date, generation_type, system="SEN"):
 def check_consumption_dfs(df):
     """"""
     # CAEZC does not have a column named Energía, it is named Total de Cargas
-    if "Energía [MWh]" not in df.columns:
-        df["Energía [MWh]"] = df["Total de Cargas [MWh]"]
-        df.drop(columns=["Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]","Total de Cargas [MWh]"], inplace=True)
+    if "Demanda de Energía [MWh]" not in df.columns:
+        df["Demanda de Energía [MWh]"] = df["Energía Total Asignada [MWh]"]
+        df.drop(columns=["Energía Asignada a Cargas Directamente Modeladas [MWh]","Energía Asignada a Cargas Indirectamente Modeladas [MWh]","Energía Total Asignada [MWh]"], inplace=True)
         return df
     
     else:
@@ -668,22 +668,22 @@ def json_to_dataframe(json_file):
 
     if json_file["nombre"] in ["Energía Generada por Tipo de Tecnología","Pronóstico de Generación Intermitente"]:
         df["Nombre del Nodo"] = df["tecnologia"]
-        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
-        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+        df["Generación de Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Generación de Energía [MWh]"]]
 
         return df
 
     elif json_file["nombre"] == "Pronóstico de Demanda de Energía por Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
-        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
-        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+        df["Demanda de Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Demanda de Energía [MWh]"]]
         
         return df
 
     elif json_file["nombre"] == "Estimación de la Demanda Real de Energía por Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
-        df["Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
-        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía [MWh]"]]
+        df["Demanda de Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Demanda de Energía [MWh]"]]
         
         return df
 
@@ -699,10 +699,10 @@ def json_to_dataframe(json_file):
     
     elif json_file["nombre"] == "Cantidades Asignadas de Energía de Zona de Carga":
         df["Nombre del Nodo"] = df["zona_carga"]
-        df["Cargas Directamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_mdo_nodales"]).astype("float")
-        df["Cargas Indirectamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_pml_zonales"]).astype("float")
-        df["Total de Cargas [MWh]"] = df["Valores"].apply(lambda x: x["total_cargas"]).astype("float")
-        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Cargas Directamente Modeladas [MWh]","Cargas Indirectamente Modeladas [MWh]","Total de Cargas [MWh]"]]
+        df["Energía Asignada a Cargas Directamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_mdo_nodales"]).astype("float")
+        df["Energía Asignada a Cargas Indirectamente Modeladas [MWh]"] = df["Valores"].apply(lambda x: x["demanda_pml_zonales"]).astype("float")
+        df["Energía Total Asignada [MWh]"] = df["Valores"].apply(lambda x: x["total_cargas"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Energía Asignada a Cargas Directamente Modeladas [MWh]","Energía Asignada a Cargas Indirectamente Modeladas [MWh]","Energía Total Asignada [MWh]"]]
         
         return df
     
@@ -717,20 +717,20 @@ def json_to_dataframe(json_file):
         return df
     
     elif json_file["nombre"] == "PEND":
-        df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pz"]).astype("float")
+        df["Precio de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pz"]).astype("float")
         df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_ene"]).astype("float")
         df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_per"]).astype("float")
         df["Componente de Congestión [$/MWh]"] = df["Valores"].apply(lambda x: x["pz_cng"]).astype("float")
         df["Nombre del Nodo"] = df["zona_carga"].copy()
 
     elif json_file["nombre"] == "PML":
-        df["Precio Total [$/MWh]"] = df["Valores"].apply(lambda x: x["pml"]).astype("float")
+        df["Precio de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pml"]).astype("float")
         df["Componente de Energía [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_ene"]).astype("float")
         df["Componente de Pérdidas [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_per"]).astype("float")
         df["Componente de Congestión [$/MWh]"] = df["Valores"].apply(lambda x: x["pml_cng"]).astype("float")
         df["Nombre del Nodo"] = df["clv_nodo"].copy()
 
-    df = df[["Sistema","Mercado","Fecha","Hora","Nombre del Nodo","Precio Total [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"]]
+    df = df[["Sistema","Mercado","Fecha","Hora","Nombre del Nodo","Precio de Energía [$/MWh]","Componente de Energía [$/MWh]", "Componente de Pérdidas [$/MWh]","Componente de Congestión [$/MWh]"]]
 
     return df
 
@@ -860,27 +860,27 @@ def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum, percentage=Fa
         # Hourly graph
         if "Fecha_g" in cols and "Hora_g" in cols:
             df.set_index("Fecha_g", inplace=True)
-            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+            df["Generación de Energía [%]"] = df["Generación de Energía [MWh]"].div(df.resample('H')["Generación de Energía [MWh]"].transform("sum")).multiply(100).round(3)
         
         # Daily graph
         elif "Fecha_g" in cols:
             df.set_index("Fecha_g", inplace=True)
-            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('D')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+            df["Generación de Energía [%]"] = df["Generación de Energía [MWh]"].div(df.resample('D')["Generación de Energía [MWh]"].transform("sum")).multiply(100).round(3)
         
         # Weekly graph
         elif "Año-Semana" in cols:            
-            df["Energía [%]"] = df[["Año-Semana","Energía [MWh]"]].groupby("Año-Semana").transform(lambda x: x / x.sum()).multiply(100).round(3)
+            df["Generación de Energía [%]"] = df[["Año-Semana","Generación de Energía [MWh]"]].groupby("Año-Semana").transform(lambda x: x / x.sum()).multiply(100).round(3)
             df.set_index("Año-Semana", inplace=True)
 
         # Day-of-week graph
         elif "Día-Hora" in cols:
             df.set_index("Día-Hora", inplace=True)
-            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+            df["Generación de Energía [%]"] = df["Generación de Energía [MWh]"].div(df.resample('H')["Generación de Energía [MWh]"].transform("sum")).multiply(100).round(3)
 
         # Month graph
         elif "Mes-Hora" in cols:
             df.set_index("Mes-Hora", inplace=True)
-            df["Energía [%]"] = df["Energía [MWh]"].div(df.resample('H')["Energía [MWh]"].transform("sum")).multiply(100).round(3)
+            df["Generación de Energía [%]"] = df["Generación de Energía [MWh]"].div(df.resample('H')["Generación de Energía [MWh]"].transform("sum")).multiply(100).round(3)
         
         df.reset_index(inplace=True)
 
@@ -946,7 +946,7 @@ def arange_dataframe_for_info_table(df, component, group):
 
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
-def plot_df(df, component, plot_option, group):
+def plot_df(df, component, plot_option, group, start_date, end_date):
     """Generates plot depending on selected options"""
 
     if plot_option == "Promedio Horario por Día de la Semana":
@@ -1061,7 +1061,13 @@ def plot_df(df, component, plot_option, group):
             bgcolor = 'rgba(255,255,255,0.6)',
             title_text=''
         ),
-        hovermode="x"
+        hovermode="x",
+        title={
+            "text":f"{component} de {start_date} a {end_date} - {plot_option}",
+            "y":0.95,
+            "x":0.5,
+            "xanchor": "center",
+            "yanchor": "top"}
     )
     fig.update_traces(
         mode="lines",#"markers+lines",
@@ -1079,7 +1085,7 @@ def plot_df(df, component, plot_option, group):
 
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
-def plot_generation(df, plot_option, component):
+def plot_generation(df, plot_option, component, start_date, end_date):
     """Generates area plot depending on selected options"""
 
     if plot_option == "Promedio Horario por Día de la Semana":
@@ -1165,7 +1171,13 @@ def plot_generation(df, plot_option, component):
             bgcolor = 'rgba(255,255,255,0.6)',
             title_text=''
         ),
-        hovermode="x"
+        hovermode="x",
+        title={
+            "text":f"{component} de {start_date} a {end_date} - {plot_option}",
+            "y":0.95,
+            "x":0.5,
+            "xanchor": "center",
+            "yanchor": "top"}
     )
     fig.update_traces(
         mode="lines",#"markers+lines",
@@ -1182,17 +1194,26 @@ def plot_generation(df, plot_option, component):
     return fig
 
 @st.cache(suppress_st_warning=True, show_spinner=False, allow_output_mutation=True)
-def plot_generation_pie(df, component = "Energía [MWh]"):
+def plot_generation_pie(df, start_date, end_date, component = "Generación de Energía [MWh]"):
     """Plot generation gonut plot with total energy in the middle"""
 
-    total_energy = f"""Total de Energía:<br>{round(df["Energía [MWh]"].sum()/1000000,2)} TWh"""
+    total_energy = f"""Total de Energía:<br>{round(df["Generación de Energía [MWh]"].sum()/1000000,2)} TWh"""
+    tech_len = len(df["Nodo-Mercado"].unique().tolist())
+    title_extra_string = "" if tech_len > 2 else "Pronóstico de "
 
     fig = px.pie(df, values=component, names="Nodo-Mercado", hole=0.8)
 
     # Add annotations in the center of the donut
     fig.update_layout(
-    annotations=[dict(text=total_energy, x=0.5, y=0.5, font_size=20, showarrow=False)])
-    
+        annotations=[dict(text=total_energy, x=0.5, y=0.5, font_size=20, showarrow=False)],
+        title={
+                "text":f"Mix de {title_extra_string}Generación de Energía de {start_date} a {end_date}",
+                "y":0.95,
+                "x":0.5,
+                "xanchor": "center",
+                "yanchor": "top"}
+        )
+
     return fig
 
 @st.cache()
@@ -1356,7 +1377,7 @@ def main():
         print('Plotting...')
         # Create DataFrame for plot and create plot
         df_plot = arange_dataframe_for_plot(df_requested_clean.copy(), plot_option, group, mean_or_sum = mean_or_sum)
-        st.plotly_chart(plot_df(df_plot, component, plot_option, group), use_container_width=True)#use_column_width=True
+        st.plotly_chart(plot_df(df_plot, component, plot_option, group, start_date.strftime("%Y/%m/%d"), end_date.strftime("%Y/%m/%d")), use_container_width=True)#use_column_width=True
 
         # Extra plots for generation info
         if selected_subdata == "Generación":
@@ -1369,15 +1390,15 @@ def main():
             percentage = col2.checkbox('Porcentajes', value=False, help = "Analiza el porcentaje del total generado.")
 
             # In case percentage is selected, change column units to '%'
-            second_plot_component = "Energía [%]" if percentage else "Energía [MWh]"
+            second_plot_component = "Generación de Energía [%]" if percentage else "Generación de Energía [MWh]"
 
             # Plotting generation graph
             df_generation_plot = arange_dataframe_for_plot(df_requested_clean.copy(), second_plot_option, group=False, mean_or_sum = mean_or_sum, percentage = percentage)
-            st.plotly_chart(plot_generation(df_generation_plot, second_plot_option, second_plot_component), use_container_width=True)
+            st.plotly_chart(plot_generation(df_generation_plot, second_plot_option, second_plot_component, start_date.strftime("%Y/%m/%d"), end_date.strftime("%Y/%m/%d")), use_container_width=True)
             
             # Plotting donut graph
             df_generation_plot = arange_dataframe_for_plot(df_requested_clean.copy(), plot_option="Diario", group=False, mean_or_sum = mean_or_sum)
-            st.plotly_chart(plot_generation_pie(df_generation_plot), use_container_width=True)
+            st.plotly_chart(plot_generation_pie(df_generation_plot, start_date.strftime("%Y/%m/%d"), end_date.strftime("%Y/%m/%d")), use_container_width=True)
 
         # Create DataFrame for info table and display info table
         df_info_table = arange_dataframe_for_info_table(df_requested.copy(), component, group)
