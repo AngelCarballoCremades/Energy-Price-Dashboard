@@ -893,12 +893,13 @@ def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum, percentage=Fa
 
 
 @st.cache(show_spinner=False)
-def arange_dataframe_for_table(df, component, download = False):
+def arange_dataframe_for_table(df):
     """Modifies original df to show in table."""
     
     df["Nodo-Mercado"] = df['Mercado'] + '_' + df["Nombre del Nodo"] 
-    df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado', values=component)
-    df_table.columns = df_table.columns.to_series().values
+    df = df[[col for col in df.columns if col not in ["Sistema","Mercado","Nombre del Nodo"]]]
+    df_table = df.pivot(index=['Fecha','Hora'], columns='Nodo-Mercado')#, values=component)
+    df_table.columns = [(" ").join(col) for col in df_table.columns.to_series().values]
     df_table.reset_index(inplace=True)
     df_table['Hora'] = df_table['Hora'].astype('int')
     df_table.sort_values(by=['Fecha','Hora'], axis=0, ascending=[True,True], inplace=True, ignore_index=True)
@@ -1217,20 +1218,15 @@ def plot_generation_pie(df, start_date, end_date, component = "Generación de En
     return fig
 
 @st.cache()
-def get_table_download_link(df,dates, component):
+def get_table_download_link(df,dates, selected_data, selected_subdata):
     """Generates a link allowing the data in a given panda dataframe to be downloaded
     in:  dataframe
     out: href string
     """
 
-    component_title = ''
-    for s in component:
-        if s == '[':
-            break
-        else:
-            component_title += s
+    component_title = selected_data+" "+selected_subdata
 
-    file_name_header = unidecode.unidecode(component_title[:-1]).replace(' ',"_") # Remove special characters ó, í, á, etc from file name
+    file_name_header = unidecode.unidecode(component_title).replace(" ","_") # Remove special characters ó, í, á, etc from file name
     file_name = f"{file_name_header}_{dates[0].strftime('%Y_%m_%d')}_{dates[1].strftime('%Y_%m_%d')}.csv"
     
     csv = df.to_csv(index=False)
@@ -1409,12 +1405,12 @@ def main():
         st.markdown("")
 
         # Create dataframe for table and display table
-        df_table = arange_dataframe_for_table(df_requested.copy(), component)
+        df_table = arange_dataframe_for_table(df_requested.copy())
         st.markdown("""Primeras 1000 filas de datos:""")
         st.dataframe(df_table.iloc[:1000].style.format({col:"{:,}" for col in df_table.columns if col not in ['Fecha','Hora']}).applymap(lambda x: 'color: red' if x < 0 else 'color: black', subset=[col for col in df_table.columns if col not in ['Fecha','Hora']]))
         
         # Download link
-        st.markdown(get_table_download_link(df_table, dates, component), unsafe_allow_html=True)
+        st.markdown(get_table_download_link(df_table, dates, selected_data, selected_subdata), unsafe_allow_html=True)
         
     print('Done')
 
