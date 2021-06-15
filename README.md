@@ -16,9 +16,9 @@ Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [S
 9. For now, non-CENACE APIs need to be disabled
 
 ## Informatios Source
-Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) and [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf), [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf) and [EAIMPEX](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-EAIMPEX%20v0.pdf).
 Information gathered via private (for now) [APIs from this repo](https://github.com/AngelCarballoCremades/CENACE-RDS-API) for [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
-Individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) and [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
+Individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC/EAIMPEX](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) and [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
 
 ## Dashboard
@@ -94,6 +94,15 @@ Here you can choose:
             * MDA is available up to tomorrow.
         * **MDA** market
             * Must be selected.
+* **Enlaces Internacionales** - 
+    * **Cantidades Asignadas** - Asigned quantities of energy by international connection (Exported or Imported).
+        * **Enlaces** 
+            * At least one must be selected.
+        * **Fechas** - Date range of information to request. 
+            * From Jan 2018 to Tomorrow.
+            * MDA is available up to tomorrow.
+        * **MDA** market
+            * Must be selected.
     
 Once a valid selection is made, information request to CENACE will begin and a progress bar will apear. Depending on the info size, it may take some seconds or up to minutes to finish.
 
@@ -133,9 +142,9 @@ Every time a selection is made, a new graph will be rendered.
 
 ## Future Updates
 This are changes or updates planned to be done some time soon.
-* Add MTR-MDA button to graph the difference between the two.
 * Build a APIs and add info to DB to gather missing info.
-* Add generation by technology info.
+* Add MTR-MDA button to graph the difference between the two.
+
 
 I will always be exploring new visualizations, feel free to ask for something to be added or modified!
 
