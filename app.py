@@ -39,8 +39,26 @@ months = {
     12:"Diciembre"
     }
 
-# configuration dict to modify texts and options
+reservas = {
+    "Reserva de regulación secundaria":"Reserva de Regulación Secundaria [$/MWh]",
+    "Reserva rodante de 10 minutos":"Reserva Rodante de 10 Minutos [$/MWh]",
+    "Reserva no rodante de 10 minutos":"Reserva No Rodante de 10 Minutos [$/MWh]",
+    "Reserva rodante suplementaria":"Reserva Rodante Suplementaria [$/MWh]",
+    "Reserva no rodante suplementarias":"Reserva No Rodante Suplementaria [$/MWh]"    
+}
 
+# International connections list and systems
+international_connections = {
+    "CD INDUSTRIAL - LAREDO AMER":"SIN",
+    "CUMBRES FRONTERA - RAIL ROAD":"SIN",
+    "PIEDRAS NEGRAS - EAGLE PASS":"SIN",
+    "TAPACHULA-LOS BRILLANTES":"SIN",
+    "XULHA-BELICE":"SIN",
+    "TIJUANA - OTAY MESA":"BCA",
+    "LA ROSITA - IMPERIAL VALLEY":"BCA",
+}
+
+#Cconfiguration dict to modify texts and options
 analysis_options = {
     "Energía Eléctrica":{
         "Precios":{
@@ -152,15 +170,26 @@ analysis_options = {
                 "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
             }
         }
+    },
+    "Enlaces Internacionales":{
+        "Cantidades Asignadas":{
+            "max_date":date.today()+timedelta(days=1),
+            "min_date":datetime(2018, 1, 1),
+            "start_date":date.today()-timedelta(days=30), # Initial date selected
+            "end_date":date.today()-timedelta(days=15), # final date initially selected
+            "markets":["MDA"],
+            "mean_or_sum":"sum",
+            "component":{
+                "options":["Importación de Energía [MWh]","Exportación de Energía [MWh]"],
+                "title":"Valor a graficar:",
+                "help":"Importación o Exportación"
+            },
+            "plot_options":{
+                "title":"Valores a graficar:",
+                "help":"Grafica el valor total (suma) por hora, día, semana, promedio de cada hora por día de la semana o promedio de cada hora por mes."
+            }
+        }
     }
-}
-
-reservas = {
-    "Reserva de regulación secundaria":"Reserva de Regulación Secundaria [$/MWh]",
-    "Reserva rodante de 10 minutos":"Reserva Rodante de 10 Minutos [$/MWh]",
-    "Reserva no rodante de 10 minutos":"Reserva No Rodante de 10 Minutos [$/MWh]",
-    "Reserva rodante suplementaria":"Reserva Rodante Suplementaria [$/MWh]",
-    "Reserva no rodante suplementarias":"Reserva No Rodante Suplementaria [$/MWh]"    
 }
 
 
@@ -258,6 +287,15 @@ def instructions_text():
                     * MDA hasta hoy +1 día.
                 * **MDA**
                     * Debe estar seleccionado.
+        * **Enlaces Internacionales**
+            * **Cantidades Asignadas** - Cantidades asignadas de energía en el MDA de Importación y Exportación.
+                * **Enlaces**
+                    * Por lo menos uno debe ser seleccionado.
+                * **Fechas** - Rango de fechas de información a solicitar. 
+                    * Disponible desde enero 2018 a mañana.
+                    * MDA hasta hoy +1 día.
+                * **MDA**
+                    * Debe estar seleccionado.
             
 
         Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
@@ -285,11 +323,11 @@ def instructions_text():
         
         Puedes descargar toda la información a un cvs con el botón **Descargar datos**.
 
-        Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf) y [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf).
+        Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf), [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf) y [EAIMPEX](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-EAIMPEX%20v0.pdf).
         
         Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
         
-        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) y [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
+        Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC/EAIMPEX](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) y [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
 
         """
@@ -313,7 +351,7 @@ def check_dates(dates):
 def check_nodes_zones(selected):
     """Checks if there is at least a node selected"""
     if not selected:
-        st.sidebar.warning('Selecciona un Nodo')    
+        st.sidebar.warning('Selecciona un Nodo o Enlace Internacional')    
         st.stop()
 
 def check_markets(markets):
@@ -499,9 +537,9 @@ def get_generation_urls(start_date, end_date, generation_type, system="SEN"):
 
     # Get urls from desired information
     if generation_type == "MDA-Intermitentes":
-        urls = get_urls_to_request(False, dates_packed, "PGI", "MDA", system)
+        urls = get_urls_to_request(False, dates_packed, "PGI", "MDA", [system])
     elif generation_type == "MTR-SEN":
-        urls = get_urls_to_request(False, dates_packed, "EGTT", "MTR", system)
+        urls = get_urls_to_request(False, dates_packed, "EGTT", "MTR", [system])
 
     # If there are no urls to call
     if not len(urls):
@@ -511,8 +549,26 @@ def get_generation_urls(start_date, end_date, generation_type, system="SEN"):
     return urls
 
 
+def get_int_conn_urls(start_date, end_date, selected_int_conns):
+    """Returns international connections urls to request"""
+    dates_packed = pack_dates(start_date, end_date, market="MDA",limit_dates=True)
+
+    # Get system of every international connection
+    systems = list(set([international_connections[int_conn] for int_conn in selected_int_conns]))
+
+    # Get urls from desired information
+    urls = get_urls_to_request(False, dates_packed, "EAIMPEX", "MDA", systems)
+    
+    # If there are no urls to call
+    if not len(urls):
+        st.sidebar.warning('No hay valores disponibles para las fechas seleccionadas.')
+        st.stop()
+
+    return urls
+
+
 def check_consumption_dfs(df):
-    """"""
+    """Arrange dataframe to be compared in energy consumption."""
     # CAEZC does not have a column named Energía, it is named Total de Cargas
     if "Demanda de Energía [MWh]" not in df.columns:
         df["Demanda de Energía [MWh]"] = df["Energía Total Asignada [MWh]"]
@@ -523,7 +579,7 @@ def check_consumption_dfs(df):
         return df
 
 
-def get_urls_to_request(nodes_dict, dates_packed, info_type, market, system = None):
+def get_urls_to_request(nodes_dict, dates_packed, info_type, market, systems = None):
     """Assemble API calls urls for PMLs, PNDs and PSC"""
 
     url_frame = {
@@ -532,6 +588,7 @@ def get_urls_to_request(nodes_dict, dates_packed, info_type, market, system = No
         "PSC":"https://ws01.cenace.gob.mx:8082/SWPSC/SIM/",
         "CAEZC":"https://ws01.cenace.gob.mx:8082/SWCAEZC/SIM/",
         "CASC":"https://ws01.cenace.gob.mx:8082/SWCASC/SIM/",
+        "EAIMPEX":"https://ws01.cenace.gob.mx:8082/SWEAIMPEXV0/SIM/",
         "EDREZC":f"{API_URL}SWEDREZC/",
         "PDEZC":f"{API_URL}SWPDEZC/",
         "EGTT":f"{API_URL}SWEGTT/",
@@ -541,13 +598,14 @@ def get_urls_to_request(nodes_dict, dates_packed, info_type, market, system = No
     urls_list = []
 
     if not nodes_dict:
-        for dates in dates_packed:
-            # Select correct API base
-            url = url_frame[info_type]
+        for system in systems:
+            for dates in dates_packed:
+                # Select correct API base
+                url = url_frame[info_type]
 
-            # Building request url with data provided
-            url_complete = f"{url}{system}/{market}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON"
-            urls_list.append(url_complete)
+                # Building request url with data provided
+                url_complete = f"{url}{system}/{market}/{dates[0][:4]}/{dates[0][5:7]}/{dates[0][8:]}/{dates[1][:4]}/{dates[1][5:7]}/{dates[1][8:]}/JSON"
+                urls_list.append(url_complete)
         
         return urls_list
     
@@ -666,7 +724,15 @@ def json_to_dataframe(json_file):
     df["Fecha"] = df["Valores"].apply(lambda x: x["fecha"])
     df["Hora"] = df["Valores"].apply(lambda x: x["hora"])
 
-    if json_file["nombre"] in ["Energía Generada por Tipo de Tecnología","Pronóstico de Generación Intermitente"]:
+    if json_file["nombre"] == " Energía Asignada de Importación y Exportación":
+        df["Nombre del Nodo"] = df["enlace_int"]
+        df["Importación de Energía [MWh]"] = df["Valores"].apply(lambda x: x["importacion"]).replace({"-":0}).astype("float")
+        df["Exportación de Energía [MWh]"] = df["Valores"].apply(lambda x: x["exportacion"]).astype("float")
+        df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Importación de Energía [MWh]","Exportación de Energía [MWh]"]]
+        
+        return df
+
+    elif json_file["nombre"] in ["Energía Generada por Tipo de Tecnología","Pronóstico de Generación Intermitente"]:
         df["Nombre del Nodo"] = df["tecnologia"]
         df["Generación de Energía [MWh]"] = df["Valores"].apply(lambda x: x["energia"]).astype("float")
         df = df[["Sistema","Mercado","Nombre del Nodo","Fecha","Hora","Generación de Energía [MWh]"]]
@@ -739,6 +805,13 @@ def check_for_23_or_25_hours(df_requested):
     """Check for 25 or 23 hour days, works still missing in this function"""
     df = df_requested[df_requested['Hora'] != '25']
 
+    return df
+
+
+def filter_df_by_int_conn(df,selected_int_conns):
+    """Filter df by selected international connections"""
+    df = df.loc[df["Nombre del Nodo"].isin(selected_int_conns)]
+    
     return df
 
 
@@ -851,7 +924,8 @@ def arange_dataframe_for_plot(df, plot_option, group, mean_or_sum, percentage=Fa
                 return df
         
     def use_percentage(df, percentage):
-        
+        """Show generation data in percentage"""
+
         if not percentage:
             return df
 
@@ -1261,10 +1335,10 @@ def main():
     st.write("###") # Vertical space
 
     # Type of info to analyze
-    selected_data = st.sidebar.radio(label='Selecciona la opción deseada:',options=[*analysis_options], index=0, key=None)
+    selected_data = st.sidebar.radio(label="Selecciona la opción deseada:",options=[*analysis_options], index=0, key=None)
     st.sidebar.write("#")
 
-    selected_subdata = st.sidebar.radio(label=f'Información de {selected_data}:',options=[*analysis_options[selected_data]], index=0, key=None)
+    selected_subdata = st.sidebar.radio(label=f"Información de {selected_data}:",options=[*analysis_options[selected_data]], index=0, key=None)
     st.sidebar.write("#")
         
 
@@ -1284,12 +1358,12 @@ def main():
         
         # Nodes multiselect
         if selected_subdata == "Precios":
-            selected_nodes_p = st.sidebar.multiselect('NodosP',nodes_p)
-            selected_nodes_d = st.sidebar.multiselect('NodosP Distribuidos',nodes_d)
+            selected_nodes_p = st.sidebar.multiselect("NodosP",nodes_p)
+            selected_nodes_d = st.sidebar.multiselect("NodosP Distribuidos",nodes_d)
             selected = len(selected_nodes_d+selected_nodes_p)>0 # Is there any node selected?
 
         elif selected_subdata in ["Cantidades Asignadas","Demanda"]:
-            selected_nodes_d = st.sidebar.multiselect('Zonas de Carga',nodes_d)
+            selected_nodes_d = st.sidebar.multiselect("Zonas de Carga",nodes_d)
             selected = len(selected_nodes_d)>0 # Is there any node selected?
 
         elif selected_subdata == "Generación":
@@ -1299,15 +1373,21 @@ def main():
 
             # MDa can be selected by systems, only one can be selected
             if generation_type == "MDA-Intermitentes":
-                system = st.sidebar.selectbox('Sistema',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])[1:4]
+                system = st.sidebar.selectbox("Sistema",["(SIN) Nacional","(BCA) Baja California","(BCS) Baja California Sur"])[1:4]
             else:
                 system = "SEN"
 
     elif selected_data == "Servicios Conexos":
         
         # Zones multiselect
-        selected_zones = st.sidebar.multiselect('Zonas de Reserva',['(SIN) Nacional','(BCA) Baja California','(BCS) Baja California Sur'])
+        selected_zones = st.sidebar.multiselect("Zonas de Reserva",["(SIN) Nacional","(BCA) Baja California","(BCS) Baja California Sur"])
         selected = len(selected_zones)>0 # Is there any zone selected?
+    
+    elif selected_data == "Enlaces Internacionales":
+        
+        # International connections multiselect
+        selected_int_conns = st.sidebar.multiselect("Enlaces",list(international_connections.keys()))
+        selected = len(selected_int_conns)>0 # Is there any international connection selected?
         
 
     # Date picker
@@ -1327,6 +1407,7 @@ def main():
     
     start_date, end_date = dates # Unpack date range
     mean_or_sum = analysis_options[selected_data][selected_subdata]["mean_or_sum"]
+    filter_df = False
 
     # Create urls (API calls) to request using selected options    
     if selected_data == "Energía Eléctrica":
@@ -1343,14 +1424,22 @@ def main():
     elif selected_data == "Servicios Conexos":
 
         if selected_subdata == "Precios":
-            urls, zones = get_zones_urls(start_date, end_date, selected_zones, 'PSC', *markets)
+            urls, zones = get_zones_urls(start_date, end_date, selected_zones, "PSC", *markets)
 
         elif selected_subdata == "Cantidades Asignadas":
-            urls, zones = get_zones_urls(start_date, end_date, selected_zones, 'CASC', *markets)
+            urls, zones = get_zones_urls(start_date, end_date, selected_zones, "CASC", *markets)
+    
+    elif selected_data == "Enlaces Internacionales":
+
+        if selected_subdata == "Cantidades Asignadas":
+            urls = get_int_conn_urls(start_date, end_date, selected_int_conns)
+            filter_df = True
 
 
     print("Requesting...")
     df_requested = get_info(urls, selected_subdata) # Request created urls
+    print(df_requested["Nombre del Nodo"].unique())
+    df_requested = df_requested if not filter_df else filter_df_by_int_conn(df_requested,selected_int_conns)
 
     # Check for error in request
     check_df_requested(df_requested)
