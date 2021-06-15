@@ -1438,7 +1438,7 @@ def main():
 
     print("Requesting...")
     df_requested = get_info(urls, selected_subdata) # Request created urls
-    print(df_requested["Nombre del Nodo"].unique())
+
     df_requested = df_requested if not filter_df else filter_df_by_int_conn(df_requested,selected_int_conns)
 
     # Check for error in request
