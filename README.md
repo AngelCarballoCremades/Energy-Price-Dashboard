@@ -11,13 +11,14 @@ Online dashboard: [www.energia-mexico.org](http://www.energia-mexico.org/) or [S
 4. conda activate venv # Activate environment
 5. conda install pip # install pip
 6. pip install -r requirements.txt # Install required packages
-7. streamlit run app.py #Run dashboard file locally
-8. Open browser and go to http://localhost:8501/ # Browser should open automatically
-9. For now, non-CENACE APIs need to be disabled
+7. Add a folder named *.streamlit* and a file inside called *secrets.toml*
+    * Write *API_URL = "https://api.energia-mexico.org/"* into *secrets.toml*
+8. streamlit run app.py #Run dashboard file locally
+9. Open browser and go to http://localhost:8501/ # Browser should open automatically
 
 ## Informatios Source
 Information gathered via CENACE web services for [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf), [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf) and [EAIMPEX](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-EAIMPEX%20v0.pdf).
-Information gathered via private (for now) [APIs from this repo](https://github.com/AngelCarballoCremades/CENACE-RDS-API) for [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
+Information gathered via [api.energia-mexico.org](https://github.com/AngelCarballoCremades/energia-mexico-REST-API) for [EDREZC](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWEGTT) and [PGI](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWPGI).
 Individual files can be downloaded from here: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC/EAIMPEX](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) and [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
 
@@ -142,7 +143,6 @@ Every time a selection is made, a new graph will be rendered.
 
 ## Future Updates
 This are changes or updates planned to be done some time soon.
-* Build a APIs and add info to DB to gather missing info.
 * Add MTR-MDA button to graph the difference between the two.
 
 
