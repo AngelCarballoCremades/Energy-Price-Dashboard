@@ -298,7 +298,7 @@ def instructions_text():
                     * Debe estar seleccionado.
             
 
-        Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información la información es descargada.
+        Cuando se ha hecho una selección válida, aparecerá una barra de progreso mientras la información es descargada.
         El tiempo que tarde dependerá de la información solicitada.
 
         ### Área Central
@@ -309,7 +309,7 @@ def instructions_text():
             * **Horario** - Graficar promedio por hora (promedio simple).
             * **Diario** - Graficar promedio por día (promedio simple) o suma del total asignado en el día.
             * **Semanal** - Graficar promedio por semana (promedio simple) o suma del total asignado en la semana.
-            * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la Semana. Utiliza la información solicitada en la barra lateral.
+            * **Promedio Horario por Día de la Semana** - Grafica el promedio de cada hora para cada día de la semana. Utiliza la información solicitada en la barra lateral.
             * **Promedio Horario por Mes** - Grafica el promedio de cada hora para cada mes. Utiliza la información solicitada en la barra lateral. 
         * **Año vs Año** - Crea diferentes trazos para cada año dentro de la información solicitada en la barra lateral.
         * **Gráficas de Generación de Energía**
@@ -325,7 +325,7 @@ def instructions_text():
 
         Información decargada a través de los servicios web del CENACE: [PML](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PML.pdf), [PND](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PEND.pdf), [PSC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-PSC.pdf), [CAEZC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CAEZC.pdf), [CASC](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-CASC.pdf) y [EAIMPEX](https://www.cenace.gob.mx/DocsMEM/2020-01-14%20Manual%20T%C3%A9cnico%20SW-EAIMPEX%20v0.pdf).
         
-        Información descargada a través de [API privada](https://github.com/AngelCarballoCremades/CENACE-RDS-API) (por ahora): [EDREZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/CENACE-RDS-API/tree/main/SWPGI).
+        Información descargada a través de [api.energia-mexico.org](https://github.com/AngelCarballoCremades/energia-mexico-REST-API): [EDREZC](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWEDREZC), [PDEZC](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWPDEZC), [EGTT](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWEGTT) y [PGI](https://github.com/AngelCarballoCremades/energia-mexico-REST-API/tree/main/SWPGI).
         
         Los archivos oficiales pueden ser descargados aquí: [PML/PND](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PreciosEnergiaSisMEM.aspx), [PSC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/ServiciosConexosSisMEM.aspx), [CASC/CAEZC/EAIMPEX](https://www.cenace.gob.mx/Paginas/SIM/Reportes/CantidadesAsignadasMDA.aspx), [EDREZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EstimacionDemandaReal.aspx) (Por Retiros), [PDEZC](https://www.cenace.gob.mx/Paginas/SIM/Reportes/PronosticosDemanda.aspx) (AUGC/Por Retiros), [EGTT](https://www.cenace.gob.mx/Paginas/SIM/Reportes/EnergiaGeneradaTipoTec.aspx) (Liquidación 0) y [PGI](https://www.cenace.gob.mx/Paginas/SIM/Reportes/H_PronosticosGeneracion.aspx?N=245&opc=divCssPronosticosGen&site=Pron%C3%B3sticos%20de%20Generaci%C3%B3n%20Intermitente&tipoArch=C&tipoUni=ALL&tipo=All&nombrenodop=).
 
